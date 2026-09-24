@@ -87,10 +87,26 @@ textarea { resize: vertical; min-height: 60px; }
 .chev.open { transform: rotate(180deg); }
 .token-note { font-size: 12px; color: var(--dim); line-height: 1.6; margin-top: 8px; }
 .token-saved { font-size: 12px; color: #7ac89a; margin-top: 6px; }
-.log-row { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.log-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
 .log-row:last-child { border-bottom: none; }
 .log-desc { color: var(--text); }
 .log-time { color: var(--dim); font-size: 11px; white-space: nowrap; }
+.log-edit-btn {
+  font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 6px;
+  border: 1px solid var(--border2); background: none; color: var(--muted);
+  cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0;
+}
+.log-edit-btn:hover { border-color: var(--accent); color: var(--accent); }
+.edit-banner {
+  background: rgba(200,168,75,0.12); border: 1px solid rgba(200,168,75,0.3);
+  color: var(--accent); font-size: 13px; line-height: 1.6;
+  padding: 10px 12px; border-radius: var(--radius); margin-bottom: 14px;
+}
+.edit-banner button {
+  display: block; margin-top: 6px; background: none; border: 1px solid rgba(200,168,75,0.4);
+  color: var(--accent); font-size: 12px; font-weight: 600; padding: 5px 10px;
+  border-radius: 6px; cursor: pointer; font-family: inherit;
+}
 </style>
 </head>
 <body>
@@ -138,8 +154,8 @@ textarea { resize: vertical; min-height: 60px; }
   </div>
 
   <div class="card">
-    <div class="card-title">Weapon Template (optional)</div>
-    <select id="weaponTemplate" onchange="applyTemplate(this.value)">
+    <div class="card-title">Load Template (optional)</div>
+    <select id="itemTemplate" onchange="applyAnyTemplate(this.value)">
       <option value="">— none —</option>
     </select>
     <div class="hint">Fills in the fields below. You can still edit anything after.</div>
@@ -331,6 +347,75 @@ var WEAPON_TEMPLATES = {
                          notes:"Placed and hidden. Triggers on pressure, not thrown or fired." }
 };
 
+var ARMOR_TEMPLATES = {
+  "Padded Jacket":   { ac:"11 + DEF",              armorType:"Light",  strReq:"", stealthDisadv:false, weight:5  },
+  "Leather Armor":   { ac:"11 + DEF",              armorType:"Light",  strReq:"", stealthDisadv:false, weight:10 },
+  "Studded Leather": { ac:"12 + DEF (max 2)",      armorType:"Light",  strReq:"", stealthDisadv:false, weight:13 },
+  "Chain Shirt":     { ac:"13 + DEF (max 2)",      armorType:"Medium", strReq:"", stealthDisadv:false, weight:20 },
+  "Scale Mail":      { ac:"14 + DEF (max 2)",      armorType:"Medium", strReq:"13", stealthDisadv:true, weight:45 },
+  "Chain Mail":      { ac:"16",                    armorType:"Heavy",  strReq:"13", stealthDisadv:true, weight:55 },
+  "Plate Armor":     { ac:"18",                    armorType:"Heavy",  strReq:"15", stealthDisadv:true, weight:65 },
+  "Kevlar Vest":     { ac:"13 + DEF (max 2)",      armorType:"Medium", strReq:"", stealthDisadv:false, weight:8,
+                       desc:"Worn under regular clothes. Stops a lot, but not everything." },
+  "Tactical Vest":   { ac:"14 + DEF (max 2)",      armorType:"Medium", strReq:"", stealthDisadv:false, weight:12 },
+  "Riot Armor":      { ac:"17",                    armorType:"Heavy",  strReq:"12", stealthDisadv:true, weight:35,
+                       desc:"Bulky, hot, and loud to move in. Meant to stop a crowd, not to be worn quietly." },
+  "Scrap Plating":   { ac:"13 + DEF (max 1)",      armorType:"Medium", strReq:"", stealthDisadv:true, weight:18,
+                       desc:"Welded and strapped together from whatever metal was lying around. Ugly. Works." },
+  "Riot Shield":     { ac:"+2",                    armorType:"Shield", strReq:"", stealthDisadv:false, weight:6 }
+};
+
+var MEDICAL_TEMPLATES = {
+  "Bandage":         { effect:"Stops bleeding. Heals 1d4 HP.",                                     uses:1, weight:0.2 },
+  "Field Dressing":  { effect:"Heals 1d6 HP and clears one bleeding condition.",                    uses:1, weight:0.5 },
+  "Medkit":          { effect:"Heals 2d8 HP.",                                                      uses:1, weight:2   },
+  "Antidote":        { effect:"Clears one poison condition.",                                       uses:1, weight:0.3 },
+  "Stimpack":        { effect:"Heals 2d4 HP and clears one level of exhaustion.",                   uses:1, weight:0.5 },
+  "Painkillers":     { effect:"Removes disadvantage from pain-related effects for the next hour.",  uses:3, weight:0.2 },
+  "Splint":          { effect:"Stabilizes a broken limb. Doesn't heal it, just stops it getting worse.", uses:1, weight:1 },
+  "Canned Food":     { effect:"Satisfies a day's hunger.",                                          uses:1, weight:1   },
+  "MRE":             { effect:"Satisfies a day's hunger and heals 1d4 HP.",                         uses:1, weight:1.5 },
+  "Ration Bar":      { effect:"Satisfies a day's hunger. Tastes like cardboard.",                   uses:1, weight:0.3 },
+  "Water Bottle":    { effect:"Satisfies a day's thirst.",                                          uses:1, weight:1   },
+  "Purified Water":  { effect:"Satisfies a day's thirst. Safe to drink, no questions asked.",        uses:1, weight:1   },
+  "Energy Drink":    { effect:"Advantage on the next Fortitude or Focus roll made within the hour.", uses:1, weight:0.5 }
+};
+
+var AMMO_TEMPLATES = {
+  "9mm Rounds (x12)":       { weight:0.5, qty:12, dmg:"", dmgType:"" },
+  "Rifle Rounds (x20)":     { weight:1,   qty:20, dmg:"", dmgType:"" },
+  "Shotgun Shells (x8)":    { weight:1,   qty:8,  dmg:"", dmgType:"" },
+  "Arrows (x10)":           { weight:1,   qty:10, dmg:"", dmgType:"" },
+  "Crossbow Bolts (x10)":   { weight:1.5, qty:10, dmg:"", dmgType:"" },
+  "Sling Bullets (x10)":    { weight:1.5, qty:10, dmg:"", dmgType:"" }
+};
+
+var TOOL_TEMPLATES = {
+  "Rope (50 ft)":     { weight:10, desc:"" },
+  "Flashlight":       { weight:1,  desc:"" },
+  "Lockpick Set":     { weight:1,  desc:"" },
+  "Two-Way Radio":    { weight:1,  desc:"" },
+  "Duct Tape":        { weight:0.5, desc:"" },
+  "Multitool":        { weight:1,  desc:"" },
+  "Gas Mask":         { weight:2,  desc:"" },
+  "Water Filter":     { weight:1,  desc:"" },
+  "Crowbar (Tool)":   { weight:5,  desc:"For prying, not fighting. Though it'll do that too." }
+};
+
+var VALUABLE_TEMPLATES = {
+  "Gold Coins (handful)": { weight:0.5, stackable:true, desc:"" },
+  "Jewelry":              { weight:0.1, desc:"" },
+  "Gemstone":             { weight:0.1, desc:"" },
+  "Pre-War Currency":     { weight:0.1, desc:"Worthless as money now. Some people still collect it." }
+};
+
+var JUNK_TEMPLATES = {
+  "Scrap Metal":          { weight:2,   desc:"" },
+  "Broken Electronics":   { weight:1,   desc:"Might be worth something to the right person. Might not." },
+  "Empty Bottle":         { weight:0.5, desc:"" },
+  "Rusty Nails (handful)":{ weight:0.5, desc:"" }
+};
+
 function $(id) { return document.getElementById(id); }
 
 function buildTypePills() {
@@ -358,29 +443,102 @@ function toggleConsumable() {
   $('consumableWrap').style.display = $('itUsable').checked ? 'block' : 'none';
 }
 
-function populateWeaponTemplates() {
-  var sel = $('weaponTemplate');
-  var basicGroup = document.createElement('optgroup'); basicGroup.label = 'Basic';
-  var advGroup   = document.createElement('optgroup'); advGroup.label = 'Advanced';
+function populateTemplates() {
+  var sel = $('itemTemplate');
+  function addGroup(label, dict, prefix) {
+    var g = document.createElement('optgroup'); g.label = label;
+    Object.keys(dict).forEach(function(name) {
+      var o = document.createElement('option');
+      o.value = prefix + '::' + name;
+      o.textContent = name;
+      g.appendChild(o);
+    });
+    sel.appendChild(g);
+  }
+  var basic = {}, advanced = {};
   Object.keys(WEAPON_TEMPLATES).forEach(function(name) {
-    var o = document.createElement('option'); o.value = name; o.textContent = name;
-    (WEAPON_TEMPLATES[name].tier === 'Advanced' ? advGroup : basicGroup).appendChild(o);
+    (WEAPON_TEMPLATES[name].tier === 'Advanced' ? advanced : basic)[name] = WEAPON_TEMPLATES[name];
   });
-  sel.appendChild(basicGroup);
-  sel.appendChild(advGroup);
+  addGroup('Weapons — Basic', basic, 'weapon');
+  addGroup('Weapons — Advanced', advanced, 'weapon');
+  addGroup('Armor', ARMOR_TEMPLATES, 'armor');
+  addGroup('Medical & Food', MEDICAL_TEMPLATES, 'medical');
+  addGroup('Ammo', AMMO_TEMPLATES, 'ammo');
+  addGroup('Tools', TOOL_TEMPLATES, 'tool');
+  addGroup('Valuables', VALUABLE_TEMPLATES, 'valuable');
+  addGroup('Junk', JUNK_TEMPLATES, 'junk');
 }
-function applyTemplate(name) {
-  if (!name) return;
-  var t = WEAPON_TEMPLATES[name];
-  if (!$('itName').value.trim()) $('itName').value = name;
-  selectedType = 'Weapon'; buildTypePills(); showTypeSection();
-  $('itWeight').value = t.weight;
-  $('wProps').value = t.props;
-  $('wClass').value = t.wclass;
-  $('wTwoHanded').checked = /two-handed/i.test(t.props);
-  $('actionsList').innerHTML = '';
-  addActionRow({ name: name, damage: t.dmg, dmgType: t.type, range: t.range, damage2: t.dmg2||'', dmgType2: t.type2||'', notes: t.notes||'' });
-  $('weaponTemplate').value = '';
+
+function applyAnyTemplate(key) {
+  if (!key) return;
+  var parts = key.split('::');
+  var cat = parts[0], name = parts[1];
+
+  if (cat === 'weapon') {
+    var t = WEAPON_TEMPLATES[name];
+    if (!$('itName').value.trim()) $('itName').value = name;
+    selectedType = 'Weapon'; buildTypePills(); showTypeSection();
+    $('itWeight').value = t.weight;
+    $('wProps').value = t.props;
+    $('wClass').value = t.wclass;
+    $('wTwoHanded').checked = /two-handed/i.test(t.props);
+    $('actionsList').innerHTML = '';
+    addActionRow({ name: name, damage: t.dmg, dmgType: t.type, range: t.range, damage2: t.dmg2||'', dmgType2: t.type2||'', notes: t.notes||'' });
+  }
+  else if (cat === 'armor') {
+    var a = ARMOR_TEMPLATES[name];
+    if (!$('itName').value.trim()) $('itName').value = name;
+    selectedType = 'Armor'; buildTypePills(); showTypeSection();
+    $('itWeight').value = a.weight;
+    if (a.desc) $('itDesc').value = a.desc;
+    $('aAC').value = a.ac;
+    $('aType').value = a.armorType;
+    $('aStrReq').value = a.strReq;
+    $('aStealthDisadv').checked = a.stealthDisadv;
+  }
+  else if (cat === 'medical') {
+    var m = MEDICAL_TEMPLATES[name];
+    if (!$('itName').value.trim()) $('itName').value = name;
+    selectedType = 'Medical'; buildTypePills(); showTypeSection();
+    $('itWeight').value = m.weight;
+    $('itUsable').checked = true; $('itConsumable').checked = true; toggleConsumable();
+    $('itUses').value = m.uses;
+    $('mEffect').value = m.effect;
+  }
+  else if (cat === 'ammo') {
+    var am = AMMO_TEMPLATES[name];
+    if (!$('itName').value.trim()) $('itName').value = name;
+    selectedType = 'Ammo'; buildTypePills(); showTypeSection();
+    $('itWeight').value = am.weight;
+    $('itQty').value = am.qty;
+    $('amDamage').value = am.dmg;
+    $('amDmgType').value = am.dmgType;
+  }
+  else if (cat === 'tool') {
+    var tl = TOOL_TEMPLATES[name];
+    var cleanName = name.replace(' (Tool)', '');
+    if (!$('itName').value.trim()) $('itName').value = cleanName;
+    selectedType = 'Tool'; buildTypePills(); showTypeSection();
+    $('itWeight').value = tl.weight;
+    if (tl.desc) $('itDesc').value = tl.desc;
+  }
+  else if (cat === 'valuable') {
+    var v = VALUABLE_TEMPLATES[name];
+    if (!$('itName').value.trim()) $('itName').value = name;
+    selectedType = 'Valuable'; buildTypePills(); showTypeSection();
+    $('itWeight').value = v.weight;
+    if (v.desc) $('itDesc').value = v.desc;
+    if (v.stackable) $('itQty').value = $('itQty').value || 1;
+  }
+  else if (cat === 'junk') {
+    var j = JUNK_TEMPLATES[name];
+    if (!$('itName').value.trim()) $('itName').value = name;
+    selectedType = 'Junk'; buildTypePills(); showTypeSection();
+    $('itWeight').value = j.weight;
+    if (j.desc) $('itDesc').value = j.desc;
+  }
+
+  $('itemTemplate').value = '';
 }
 
 function addActionRow(data) {
@@ -511,11 +669,13 @@ function setStatus(msg, kind) {
   box.textContent = msg;
 }
 
-function logSent(repo, desc) {
+function logSent(repo, desc, item) {
   var key = 'secret_side_sent_log';
   var log; try { log = JSON.parse(localStorage.getItem(key)) || {}; } catch(e) { log = {}; }
   if (!log[repo]) log[repo] = [];
-  log[repo].unshift({ desc: desc, at: new Date().toLocaleString() });
+  var entry = { desc: desc, at: new Date().toLocaleString() };
+  if (item) entry.item = item;
+  log[repo].unshift(entry);
   log[repo] = log[repo].slice(0, 30);
   try { localStorage.setItem(key, JSON.stringify(log)); } catch(e) {}
   renderSentLog();
@@ -527,15 +687,82 @@ function renderSentLog() {
   var log; try { log = JSON.parse(localStorage.getItem('secret_side_sent_log')) || {}; } catch(e) { log = {}; }
   var entries = log[repo] || [];
   if (!entries.length) { wrap.innerHTML = '<div class="hint">Nothing sent to this character yet from this device.</div>'; return; }
-  wrap.innerHTML = entries.map(function(e) {
-    return '<div class="log-row"><div class="log-desc">' + esc(e.desc) + '</div><div class="log-time">' + esc(e.at) + '</div></div>';
+  wrap.innerHTML = entries.map(function(e, i) {
+    var editBtn = e.item ? '<button class="log-edit-btn" onclick="editLoggedItem(\'' + repo.replace(/'/g,"\\'") + '\',' + i + ')">Edit</button>' : '';
+    return '<div class="log-row"><div><div class="log-desc">' + esc(e.desc) + '</div><div class="log-time">' + esc(e.at) + '</div></div>' + editBtn + '</div>';
   }).join('');
+}
+
+function editLoggedItem(repo, index) {
+  var log; try { log = JSON.parse(localStorage.getItem('secret_side_sent_log')) || {}; } catch(e) { log = {}; }
+  var entry = (log[repo] || [])[index];
+  if (!entry || !entry.item) return;
+  loadItemIntoForm(entry.item);
+  editingOriginalName = entry.item.name;
+  updateEditBanner();
+  window.scrollTo({ top: $('itName').closest('.card').offsetTop - 12, behavior: 'smooth' });
+}
+
+function loadItemIntoForm(item) {
+  $('itName').value = item.name || '';
+  selectedType = item.type || 'Weapon'; buildTypePills(); showTypeSection();
+  $('itRarity').value = item.rarity || 'Common';
+  $('itWeight').value = item.weight || '';
+  $('itQty').value = item.qty || 1;
+  $('itDesc').value = item.desc || '';
+  $('itEquippable').checked = !!item.equippable;
+  $('itUsable').checked = !!item.usable;
+  toggleConsumable();
+  $('itConsumable').checked = !!item.consumable;
+  $('itUses').value = item.uses || '';
+  if (selectedType === 'Weapon') {
+    $('wProps').value = item.props || '';
+    $('wClass').value = item.weaponWt || '';
+    $('wTwoHanded').checked = !!item.twoHanded;
+  }
+  if (selectedType === 'Armor') {
+    $('aAC').value = item.ac || '';
+    $('aType').value = item.armorType || 'Light';
+    $('aStrReq').value = item.strReq || '';
+    $('aStealthDisadv').checked = !!item.stealthDisadv;
+  }
+  if (selectedType === 'Ammo') {
+    $('amDamage').value = item.ammoDamage || '';
+    $('amDmgType').value = item.ammoDmgType || '';
+  }
+  if (selectedType === 'Medical' || selectedType === 'Tool') {
+    $('mEffect').value = item.effect || '';
+  }
+  $('actionsList').innerHTML = '';
+  (item.actions || []).forEach(function(a) { addActionRow(a); });
+  if (!item.actions || !item.actions.length) addActionRow();
+}
+
+var editingOriginalName = null;
+function updateEditBanner() {
+  var existing = $('editBanner');
+  if (existing) existing.remove();
+  if (!editingOriginalName) {
+    $('sendBtn').textContent = 'Send Item';
+    return;
+  }
+  $('sendBtn').textContent = 'Update "' + editingOriginalName + '"';
+  var banner = document.createElement('div');
+  banner.id = 'editBanner';
+  banner.className = 'edit-banner';
+  banner.innerHTML = 'Editing <b>' + esc(editingOriginalName) + '</b> — this will replace that item on their sheet (matched by name), not add a new one. ' +
+    '<button type="button" onclick="cancelEdit()">Cancel, add new instead</button>';
+  $('itName').closest('.card').insertAdjacentElement('beforebegin', banner);
+}
+function cancelEdit() {
+  editingOriginalName = null;
+  updateEditBanner();
 }
 
 // Generic mailbox writer — GET current file, let `mutate` push the new
 // entry into the right array, PUT it back. Used for items, stat/level/HP/AC
 // changes, and item removals alike.
-function sendToMailbox(mutateFn, btn, successMsg, logDesc) {
+function sendToMailbox(mutateFn, btn, successMsg, logDesc, itemForLog) {
   var token = localStorage.getItem('secret_side_sender_token');
   if (!token) { setStatus('Save your GitHub token first (tap "GitHub Access" above).', 'err'); return; }
   var repo = getRepo();
@@ -577,7 +804,7 @@ function sendToMailbox(mutateFn, btn, successMsg, logDesc) {
     .then(function(r) {
       if (!r.ok) return r.json().then(function(e){ throw new Error(e.message || ('Write failed (status ' + r.status + ')')); });
       setStatus(successMsg, 'ok');
-      logSent(repo, logDesc);
+      logSent(repo, logDesc, itemForLog);
     })
     .catch(function(err) {
       setStatus('Failed: ' + err.message, 'err');
@@ -588,11 +815,27 @@ function sendToMailbox(mutateFn, btn, successMsg, logDesc) {
 function sendItem() {
   var item = buildItem();
   if (!item.name) { setStatus('Give the item a name first.', 'err'); return; }
+
+  if (editingOriginalName) {
+    var cmd = { cmdId: 'c' + Date.now() + Math.floor(Math.random()*10000), type: 'editItem', matchName: editingOriginalName, item: item };
+    var originalName = editingOriginalName;
+    sendToMailbox(
+      function(mailbox) { mailbox.commands.push(cmd); },
+      $('sendBtn'),
+      '"' + originalName + '" will be updated to "' + item.name + '" next time their sheet loads.',
+      'Updated item: ' + originalName + ' → ' + item.name
+    );
+    editingOriginalName = null;
+    updateEditBanner();
+    return;
+  }
+
   sendToMailbox(
     function(mailbox) { mailbox.items.push(item); },
     $('sendBtn'),
     '"' + item.name + '" sent. It\'ll appear next time their sheet loads.',
-    'Gave item: ' + item.name
+    'Gave item: ' + item.name,
+    item
   );
 }
 
@@ -638,7 +881,7 @@ function onAdjFieldChange() {
   $('adjValueLabel').textContent = isHp ? 'Current HP' : 'New Value';
 }
 
-populateWeaponTemplates();
+populateTemplates();
 buildTypePills();
 showTypeSection();
 addActionRow();
