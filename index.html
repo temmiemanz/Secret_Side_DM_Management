@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Send Item — Secret Side</title>
+<title>DM Screen — Secret Side</title>
 <style>
 :root {
   --bg:      #0c0c10;
@@ -87,13 +87,17 @@ textarea { resize: vertical; min-height: 60px; }
 .chev.open { transform: rotate(180deg); }
 .token-note { font-size: 12px; color: var(--dim); line-height: 1.6; margin-top: 8px; }
 .token-saved { font-size: 12px; color: #7ac89a; margin-top: 6px; }
+.log-row { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.log-row:last-child { border-bottom: none; }
+.log-desc { color: var(--text); }
+.log-time { color: var(--dim); font-size: 11px; white-space: nowrap; }
 </style>
 </head>
 <body>
 
 <div class="wrap">
-  <h1>Send Item</h1>
-  <p class="sub">Build an item, pick a character, send it. It shows up in their inventory next time their sheet loads.</p>
+  <h1>DM Screen</h1>
+  <p class="sub">Build a change, pick a character, send it. It applies next time their sheet loads. Nothing needed from them.</p>
 
   <div class="card">
     <div class="card-title collapsible-head" onclick="toggleTokenCard()">
@@ -219,6 +223,40 @@ textarea { resize: vertical; min-height: 60px; }
 
   <button class="btn btn-primary" id="sendBtn" onclick="sendItem()">Send Item</button>
   <div class="status" id="statusBox"></div>
+
+  <div class="card">
+    <div class="card-title">Adjust Character</div>
+    <label>Field</label>
+    <select id="adjField" onchange="onAdjFieldChange()">
+      <option value="level">Level</option>
+      <option value="str">STR</option>
+      <option value="mnd">MND</option>
+      <option value="sol">SOL</option>
+      <option value="def">DEF</option>
+      <option value="hp">HP</option>
+      <option value="ac">AC Override</option>
+    </select>
+    <div class="row2">
+      <div><label id="adjValueLabel">New Value</label><input type="text" id="adjValue" placeholder="New value"></div>
+      <div id="adjHpMaxWrap" style="display:none;"><label>Max HP (optional)</label><input type="text" id="adjHpMax" placeholder="Leave blank to keep current max"></div>
+    </div>
+    <div class="hint">AC Override sets the manual override field on their sheet — same as typing a number into the AC box themselves. Leave it in mind that it replaces their derived AC entirely.</div>
+    <button class="btn btn-primary" id="adjBtn" onclick="sendStatChange()">Send Change</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Remove Item</div>
+    <label>Item Name</label>
+    <input type="text" id="removeName" placeholder="Exact item name">
+    <div class="hint">Matches by name, exactly (not case-sensitive). If they have two items with the same name, only one gets removed.</div>
+    <button class="btn btn-primary" id="removeBtn" onclick="sendRemoval()">Send Removal</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Sent Log (this device only)</div>
+    <div class="hint" style="margin-top:0;">This is a record of what <b>you've sent</b> from this device — not a live view of their sheet. They may have used, removed, or changed things themselves since.</div>
+    <div id="sentLogList" style="margin-top:10px;"></div>
+  </div>
 </div>
 
 <script>
@@ -387,6 +425,7 @@ function updateTokenStatus() {
 
 function onCharChange() {
   $('customRepoWrap').style.display = $('charSelect').value === '__custom' ? 'block' : 'none';
+  renderSentLog();
 }
 
 function getRepo() {
@@ -472,23 +511,42 @@ function setStatus(msg, kind) {
   box.textContent = msg;
 }
 
-function sendItem() {
+function logSent(repo, desc) {
+  var key = 'secret_side_sent_log';
+  var log; try { log = JSON.parse(localStorage.getItem(key)) || {}; } catch(e) { log = {}; }
+  if (!log[repo]) log[repo] = [];
+  log[repo].unshift({ desc: desc, at: new Date().toLocaleString() });
+  log[repo] = log[repo].slice(0, 30);
+  try { localStorage.setItem(key, JSON.stringify(log)); } catch(e) {}
+  renderSentLog();
+}
+function renderSentLog() {
+  var repo = getRepo();
+  var wrap = $('sentLogList');
+  if (!repo) { wrap.innerHTML = '<div class="hint">Pick a character to see its log.</div>'; return; }
+  var log; try { log = JSON.parse(localStorage.getItem('secret_side_sent_log')) || {}; } catch(e) { log = {}; }
+  var entries = log[repo] || [];
+  if (!entries.length) { wrap.innerHTML = '<div class="hint">Nothing sent to this character yet from this device.</div>'; return; }
+  wrap.innerHTML = entries.map(function(e) {
+    return '<div class="log-row"><div class="log-desc">' + esc(e.desc) + '</div><div class="log-time">' + esc(e.at) + '</div></div>';
+  }).join('');
+}
+
+// Generic mailbox writer — GET current file, let `mutate` push the new
+// entry into the right array, PUT it back. Used for items, stat/level/HP/AC
+// changes, and item removals alike.
+function sendToMailbox(mutateFn, btn, successMsg, logDesc) {
   var token = localStorage.getItem('secret_side_sender_token');
   if (!token) { setStatus('Save your GitHub token first (tap "GitHub Access" above).', 'err'); return; }
   var repo = getRepo();
   if (!repo) { setStatus('Pick or enter a character repo first.', 'err'); return; }
-  var item = buildItem();
-  if (!item.name) { setStatus('Give the item a name first.', 'err'); return; }
 
-  var btn = $('sendBtn'); btn.disabled = true;
+  btn.disabled = true;
   setStatus('Sending…', 'busy');
 
   var owner = 'temmiemanz';
   var apiUrl = 'https://api.github.com/repos/' + owner + '/' + repo + '/contents/items-mailbox.json';
-  var headers = {
-    'Authorization': 'Bearer ' + token,
-    'Accept': 'application/vnd.github+json'
-  };
+  var headers = { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json' };
 
   fetch(apiUrl, { headers: headers })
     .then(function(r) {
@@ -497,17 +555,18 @@ function sendItem() {
       return r.json();
     })
     .then(function(fileData) {
-      var mailbox = { items: [] };
-      var sha = undefined;
+      var mailbox = { items: [], commands: [] };
+      var sha;
       if (!fileData.notFound) {
         sha = fileData.sha;
         try { mailbox = JSON.parse(b64DecodeUnicode(fileData.content.replace(/\n/g, ''))); }
-        catch (e) { mailbox = { items: [] }; }
+        catch (e) { mailbox = { items: [], commands: [] }; }
         if (!mailbox.items) mailbox.items = [];
+        if (!mailbox.commands) mailbox.commands = [];
       }
-      mailbox.items.push(item);
+      mutateFn(mailbox);
       var newContent = b64EncodeUnicode(JSON.stringify(mailbox, null, 2));
-      var body = { message: 'Send item: ' + item.name, content: newContent };
+      var body = { message: 'DM update: ' + logDesc, content: newContent };
       if (sha) body.sha = sha;
       return fetch(apiUrl, {
         method: 'PUT',
@@ -517,7 +576,8 @@ function sendItem() {
     })
     .then(function(r) {
       if (!r.ok) return r.json().then(function(e){ throw new Error(e.message || ('Write failed (status ' + r.status + ')')); });
-      setStatus('"' + item.name + '" sent. It\'ll appear next time their sheet loads.', 'ok');
+      setStatus(successMsg, 'ok');
+      logSent(repo, logDesc);
     })
     .catch(function(err) {
       setStatus('Failed: ' + err.message, 'err');
@@ -525,11 +585,66 @@ function sendItem() {
     .finally(function() { btn.disabled = false; });
 }
 
+function sendItem() {
+  var item = buildItem();
+  if (!item.name) { setStatus('Give the item a name first.', 'err'); return; }
+  sendToMailbox(
+    function(mailbox) { mailbox.items.push(item); },
+    $('sendBtn'),
+    '"' + item.name + '" sent. It\'ll appear next time their sheet loads.',
+    'Gave item: ' + item.name
+  );
+}
+
+function sendStatChange() {
+  var field = $('adjField').value;
+  var val = $('adjValue').value.trim();
+  if (val === '') { setStatus('Enter a value first.', 'err'); return; }
+  var cmd = { cmdId: 'c' + Date.now() + Math.floor(Math.random()*10000) };
+  var desc;
+  if (field === 'level') { cmd.type = 'setLevel'; cmd.value = val; desc = 'Set Level to ' + val; }
+  else if (field === 'hp') {
+    var max = $('adjHpMax').value.trim();
+    cmd.type = 'setHp'; cmd.current = val; if (max !== '') cmd.max = max;
+    desc = 'Set HP to ' + val + (max ? ('/' + max) : '');
+  }
+  else if (field === 'ac') { cmd.type = 'setAC'; cmd.value = val; desc = 'Set AC override to ' + val; }
+  else { cmd.type = 'setStat'; cmd.stat = field; cmd.value = val; desc = 'Set ' + field.toUpperCase() + ' to ' + val; }
+
+  sendToMailbox(
+    function(mailbox) { mailbox.commands.push(cmd); },
+    $('adjBtn'),
+    desc + '. It\'ll apply next time their sheet loads.',
+    desc
+  );
+}
+
+function sendRemoval() {
+  var name = $('removeName').value.trim();
+  if (!name) { setStatus('Enter the item\'s name first.', 'err'); return; }
+  var cmd = { cmdId: 'c' + Date.now() + Math.floor(Math.random()*10000), type: 'removeItem', itemName: name };
+  sendToMailbox(
+    function(mailbox) { mailbox.commands.push(cmd); },
+    $('removeBtn'),
+    'Removal of "' + name + '" sent. It\'ll apply next time their sheet loads (only if the name matches exactly).',
+    'Removed item: ' + name
+  );
+}
+
+function onAdjFieldChange() {
+  var isHp = $('adjField').value === 'hp';
+  $('adjHpMaxWrap').style.display = isHp ? 'block' : 'none';
+  $('adjValue').placeholder = isHp ? 'Current HP' : 'New value';
+  $('adjValueLabel').textContent = isHp ? 'Current HP' : 'New Value';
+}
+
 populateWeaponTemplates();
 buildTypePills();
 showTypeSection();
 addActionRow();
 updateTokenStatus();
+onAdjFieldChange();
+renderSentLog();
 $('tokenBody').style.display = localStorage.getItem('secret_side_sender_token') ? 'none' : 'block';
 </script>
 </body>
