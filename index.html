@@ -250,7 +250,7 @@ textarea { resize: vertical; min-height: 60px; }
         <option value="Secret-Side_Estella">Estella</option>
         <option value="Secret-Side_Odette">Odette</option>
         <option value="Secret-Side_Asher">Asher</option>
-        <option value="Secret-Side_FF">Mike's character (FF)</option>
+        <option value="Secret-Side_FF">F.F</option>
         <option value="Secret-Side_Meatball">Meatball (DM)</option>
         <option value="__custom">Custom repo name…</option>
       </select>
@@ -496,7 +496,7 @@ var CHARACTERS = [
   { repo: 'Secret-Side_Estella',  name: 'Estella' },
   { repo: 'Secret-Side_Odette',   name: 'Odette' },
   { repo: 'Secret-Side_Asher',    name: 'Asher' },
-  { repo: 'Secret-Side_FF',       name: "Mike's Character" },
+  { repo: 'Secret-Side_FF',       name: "F.F" },
   { repo: 'Secret-Side_Meatball', name: 'Meatball (DM)' }
 ];
 function charDisplayName(repo) {
@@ -1221,7 +1221,7 @@ function clearAllEffectsForChar() {
 // ── RANDOM TARGET ──
 function loadPartyList() {
   var saved; try { saved = JSON.parse(localStorage.getItem('secret_side_party_list')); } catch(e) {}
-  var names = saved && saved.length ? saved : ['Sanguine','Sloan','Camille','Estella','Odette','Asher',"Mike's Character",'Meatball'];
+  var names = saved && saved.length ? saved : ['Sanguine','Sloan','Camille','Estella','Odette','Asher',"F.F",'Meatball'];
   $('partyList').value = names.join('\n');
 }
 function pickRandomTarget() {
