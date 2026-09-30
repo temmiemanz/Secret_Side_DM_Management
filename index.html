@@ -108,6 +108,73 @@ textarea { resize: vertical; min-height: 60px; }
   color: var(--accent); font-size: 12px; font-weight: 600; padding: 5px 10px;
   border-radius: 6px; cursor: pointer; font-family: inherit;
 }
+
+/* sticky context header — character + tabs stay put while scrolling a tab's content */
+.sticky-head {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--bg); padding-top: 6px; margin: 0 -16px; padding-left: 16px; padding-right: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.tab-bar { display: flex; gap: 6px; margin: 10px 0 12px; overflow-x: auto; }
+.tab-btn {
+  flex: 1; padding: 10px 6px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.04em; border: 1px solid var(--border2); background: var(--panel);
+  color: var(--dim); border-radius: var(--radius); cursor: pointer; font-family: inherit; white-space: nowrap;
+}
+.tab-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(200,168,75,0.1); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* status effect chips — a stack of named counters, distinct from the GitHub-token setup card above */
+.effect-quicklist { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 2px; }
+.effect-quick-btn {
+  font-size: 12px; padding: 5px 11px; border-radius: 99px; border: 1px solid var(--border2);
+  background: none; color: var(--dim); cursor: pointer; font-family: inherit;
+}
+.effect-quick-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+.effect-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.effect-chip-empty { font-size: 12px; color: var(--dim); font-style: italic; }
+.effect-chip {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--panel2); border: 1px solid var(--border2); border-radius: 99px;
+  padding: 4px 5px 4px 12px; font-size: 13px;
+}
+.effect-chip-name { color: var(--text); font-weight: 600; }
+.effect-chip-count { color: var(--accent); font-weight: 700; font-size: 12px; }
+.effect-chip-btn, .effect-chip-x {
+  width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--border2);
+  background: none; color: var(--muted); font-size: 13px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; padding: 0; font-family: inherit;
+}
+.effect-chip-btn:hover, .effect-chip-x:hover { border-color: var(--accent); color: var(--accent); }
+.effect-chip-x { margin-left: 2px; }
+
+.result-box {
+  display: none; margin-top: 12px; text-align: center; padding: 16px;
+  background: var(--panel2); border-radius: var(--radius); border: 1px solid var(--border2);
+}
+.result-box.show { display: block; }
+.result-big { font-size: 30px; font-weight: 700; color: var(--accent); line-height: 1.1; }
+.result-small { font-size: 12px; color: var(--dim); margin-top: 4px; }
+
+.dice-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+@media (max-width: 380px) { .dice-grid { grid-template-columns: repeat(3, 1fr); } }
+.dice-btn {
+  padding: 12px 4px; font-size: 13px; font-weight: 700; border-radius: var(--radius);
+  border: 1px solid var(--border2); background: var(--panel2); color: var(--text);
+  cursor: pointer; font-family: inherit;
+}
+.dice-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+.init-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.init-row:last-child { border-bottom: none; }
+.init-row.active-turn { background: rgba(200,168,75,0.08); border-radius: 6px; }
+.init-row-name { display: flex; align-items: center; gap: 6px; }
+.init-badge { font-family: inherit; font-weight: 700; color: var(--accent); font-size: 12px; min-width: 22px; text-align: right; }
 </style>
 </head>
 <body>
@@ -135,145 +202,249 @@ textarea { resize: vertical; min-height: 60px; }
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-title">Send To</div>
-    <label>Character</label>
-    <select id="charSelect" onchange="onCharChange()">
-      <option value="Secret-Side_Sanguine">Sanguine / Tre</option>
-      <option value="Secret-Side_Sloan">Sloan</option>
-      <option value="Secret-Side_Camille">Camille</option>
-      <option value="Secret-Side_Estella-">Estella</option>
-      <option value="Secret-Side_Odette">Odette</option>
-      <option value="Secret-Side_Asher">Asher</option>
-      <option value="Secret-Side_FF">Mike's character (FF)</option>
-      <option value="__custom">Custom repo name…</option>
-    </select>
-    <div id="customRepoWrap" style="display:none;">
-      <label>Repo Name</label>
-      <input type="text" id="customRepo" placeholder="e.g. Secret-Side_Asher">
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">Load Template (optional)</div>
-    <select id="itemTemplate" onchange="applyAnyTemplate(this.value)">
-      <option value="">— none —</option>
-    </select>
-    <div class="hint">Fills in the fields below. You can still edit anything after.</div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">Item</div>
-    <label>Name</label>
-    <input type="text" id="itName" placeholder="Item name">
-
-    <label>Type</label>
-    <div class="type-pills" id="typePills"></div>
-
-    <div class="row3">
-      <div><label>Rarity</label>
-        <select id="itRarity"><option>Common</option><option>Uncommon</option><option>Rare</option><option>Unique</option></select>
-      </div>
-      <div><label>Weight (lbs)</label><input type="number" id="itWeight" placeholder="0" step="0.1"></div>
-      <div><label>Qty</label><input type="number" id="itQty" placeholder="1" min="1" value="1"></div>
-    </div>
-
-    <label>Description</label>
-    <textarea id="itDesc" placeholder="What is this? Where'd it come from?"></textarea>
-
-    <label>Usage</label>
-    <div class="check-row"><input type="checkbox" id="itEquippable"><label for="itEquippable">Equippable</label></div>
-    <div class="check-row"><input type="checkbox" id="itUsable" onchange="toggleConsumable()"><label for="itUsable">Usable</label></div>
-    <div id="consumableWrap" style="display:none;">
-      <div class="row2">
-        <div class="check-row" style="margin-top:14px;"><input type="checkbox" id="itConsumable"><label for="itConsumable">Used up when used</label></div>
-        <div><label>Uses Remaining</label><input type="number" id="itUses" placeholder="1" min="0"></div>
+  <div class="sticky-head">
+    <div class="card" style="margin-bottom:10px;">
+      <div class="card-title">Send To</div>
+      <select id="charSelect" onchange="onCharChange()">
+        <option value="Secret-Side_Sanguine">Sanguine / Tre</option>
+        <option value="Secret-Side_Sloan">Sloan</option>
+        <option value="Secret-Side_Camille">Camille</option>
+        <option value="Secret-Side_Estella-">Estella</option>
+        <option value="Secret-Side_Odette">Odette</option>
+        <option value="Secret-Side_Asher">Asher</option>
+        <option value="Secret-Side_FF">Mike's character (FF)</option>
+        <option value="Secret-Side_Meatball">Meatball (DM)</option>
+        <option value="__custom">Custom repo name…</option>
+      </select>
+      <div id="customRepoWrap" style="display:none;">
+        <label>Repo Name</label>
+        <input type="text" id="customRepo" placeholder="e.g. Secret-Side_Asher" oninput="renderEffectChips()">
       </div>
     </div>
 
-    <!-- WEAPON -->
-    <div class="type-section" id="sectionWeapon">
-      <label>Properties</label>
-      <input type="text" id="wProps" placeholder="e.g. Finesse, Light, Thrown">
-      <div class="row2">
-        <div><label>Weight Class</label>
-          <select id="wClass"><option value="">—</option><option>Light</option><option>Medium</option><option>Heavy</option><option>Thrown</option><option>Ranged</option></select>
+    <div class="tab-bar">
+      <button class="tab-btn active" id="tabBtn-give"   onclick="switchTab('give')">Give / Edit</button>
+      <button class="tab-btn"        id="tabBtn-effects" onclick="switchTab('effects')">Effects</button>
+      <button class="tab-btn"        id="tabBtn-tools"  onclick="switchTab('tools')">Tools</button>
+      <button class="tab-btn"        id="tabBtn-log"    onclick="switchTab('log')">Log</button>
+    </div>
+    <div class="status" id="statusBox"></div>
+  </div>
+
+  <!-- ═══ TAB: GIVE / EDIT ═══ -->
+  <div class="tab-panel active" id="tab-give">
+
+    <div class="card">
+      <div class="card-title">Load Template (optional)</div>
+      <select id="itemTemplate" onchange="applyAnyTemplate(this.value)">
+        <option value="">— none —</option>
+      </select>
+      <div class="hint">Fills in the fields below. You can still edit anything after.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Item</div>
+      <label>Name</label>
+      <input type="text" id="itName" placeholder="Item name">
+
+      <label>Type</label>
+      <div class="type-pills" id="typePills"></div>
+
+      <div class="row3">
+        <div><label>Rarity</label>
+          <select id="itRarity"><option>Common</option><option>Uncommon</option><option>Rare</option><option>Unique</option></select>
         </div>
-        <div class="check-row" style="margin-top:28px;"><input type="checkbox" id="wTwoHanded"><label for="wTwoHanded">Two-Handed</label></div>
+        <div><label>Weight (lbs)</label><input type="number" id="itWeight" placeholder="0" step="0.1"></div>
+        <div><label>Qty</label><input type="number" id="itQty" placeholder="1" min="1" value="1"></div>
       </div>
-    </div>
 
-    <!-- ARMOR -->
-    <div class="type-section" id="sectionArmor">
-      <div class="row2">
-        <div><label>Armor Class (AC)</label><input type="text" id="aAC" placeholder="e.g. 14 + DEF (max 2)"></div>
-        <div><label>Armor Type</label>
-          <select id="aType"><option>Light</option><option>Medium</option><option>Heavy</option><option>Shield</option></select>
+      <label>Description</label>
+      <textarea id="itDesc" placeholder="What is this? Where'd it come from?"></textarea>
+
+      <label>Usage</label>
+      <div class="check-row"><input type="checkbox" id="itEquippable"><label for="itEquippable">Equippable</label></div>
+      <div class="check-row"><input type="checkbox" id="itUsable" onchange="toggleConsumable()"><label for="itUsable">Usable</label></div>
+      <div id="consumableWrap" style="display:none;">
+        <div class="row2">
+          <div class="check-row" style="margin-top:14px;"><input type="checkbox" id="itConsumable"><label for="itConsumable">Used up when used</label></div>
+          <div><label>Uses Remaining</label><input type="number" id="itUses" placeholder="1" min="0"></div>
         </div>
       </div>
-      <div class="row2">
-        <div><label>Strength Requirement</label><input type="number" id="aStrReq" placeholder="0" min="0"></div>
-        <div class="check-row" style="margin-top:28px;"><input type="checkbox" id="aStealthDisadv"><label for="aStealthDisadv">Stealth Disadvantage</label></div>
+
+      <!-- WEAPON -->
+      <div class="type-section" id="sectionWeapon">
+        <label>Properties</label>
+        <input type="text" id="wProps" placeholder="e.g. Finesse, Light, Thrown">
+        <div class="row2">
+          <div><label>Weight Class</label>
+            <select id="wClass"><option value="">—</option><option>Light</option><option>Medium</option><option>Heavy</option><option>Thrown</option><option>Ranged</option></select>
+          </div>
+          <div class="check-row" style="margin-top:28px;"><input type="checkbox" id="wTwoHanded"><label for="wTwoHanded">Two-Handed</label></div>
+        </div>
+      </div>
+
+      <!-- ARMOR -->
+      <div class="type-section" id="sectionArmor">
+        <div class="row2">
+          <div><label>Armor Class (AC)</label><input type="text" id="aAC" placeholder="e.g. 14 + DEF (max 2)"></div>
+          <div><label>Armor Type</label>
+            <select id="aType"><option>Light</option><option>Medium</option><option>Heavy</option><option>Shield</option></select>
+          </div>
+        </div>
+        <div class="row2">
+          <div><label>Strength Requirement</label><input type="number" id="aStrReq" placeholder="0" min="0"></div>
+          <div class="check-row" style="margin-top:28px;"><input type="checkbox" id="aStealthDisadv"><label for="aStealthDisadv">Stealth Disadvantage</label></div>
+        </div>
+      </div>
+
+      <!-- AMMO -->
+      <div class="type-section" id="sectionAmmo">
+        <div class="row2">
+          <div><label>Damage</label><input type="text" id="amDamage" placeholder="e.g. 1d6"></div>
+          <div><label>Damage Type</label><input type="text" id="amDmgType" placeholder="e.g. Piercing"></div>
+        </div>
+      </div>
+
+      <!-- MEDICAL / TOOL -->
+      <div class="type-section" id="sectionMed">
+        <label>Effect</label>
+        <input type="text" id="mEffect" placeholder="e.g. Heals 2d4 HP">
       </div>
     </div>
 
-    <!-- AMMO -->
-    <div class="type-section" id="sectionAmmo">
+    <div class="card">
+      <div class="card-title">Actions</div>
+      <div id="actionsList"></div>
+      <button class="btn btn-secondary" onclick="addActionRow()">+ Add Action</button>
+    </div>
+
+    <button class="btn btn-primary" id="sendBtn" onclick="sendItem()">Send Item</button>
+
+    <div class="card">
+      <div class="card-title">Adjust Character</div>
+      <label>Field</label>
+      <select id="adjField" onchange="onAdjFieldChange()">
+        <option value="level">Level</option>
+        <option value="str">STR</option>
+        <option value="mnd">MND</option>
+        <option value="sol">SOL</option>
+        <option value="def">DEF</option>
+        <option value="hp">HP</option>
+        <option value="ac">AC Override</option>
+      </select>
       <div class="row2">
-        <div><label>Damage</label><input type="text" id="amDamage" placeholder="e.g. 1d6"></div>
-        <div><label>Damage Type</label><input type="text" id="amDmgType" placeholder="e.g. Piercing"></div>
+        <div><label id="adjValueLabel">New Value</label><input type="text" id="adjValue" placeholder="New value"></div>
+        <div id="adjHpMaxWrap" style="display:none;"><label>Max HP (optional)</label><input type="text" id="adjHpMax" placeholder="Leave blank to keep current max"></div>
+      </div>
+      <div class="hint">AC Override sets the manual override field on their sheet — same as typing a number into the AC box themselves. Leave it in mind that it replaces their derived AC entirely.</div>
+      <button class="btn btn-primary" id="adjBtn" onclick="sendStatChange()">Send Change</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Remove Item</div>
+      <label>Item Name</label>
+      <input type="text" id="removeName" placeholder="Exact item name">
+      <div class="hint">Matches by name, exactly (not case-sensitive). If they have two items with the same name, only one gets removed.</div>
+      <button class="btn btn-primary" id="removeBtn" onclick="sendRemoval()">Send Removal</button>
+    </div>
+  </div>
+
+  <!-- ═══ TAB: STATUS EFFECTS ═══ -->
+  <div class="tab-panel" id="tab-effects">
+    <div class="card">
+      <div class="card-title">Status Effects — DM Eyes Only</div>
+      <div class="hint" style="margin-top:0;">This is <b>your own private tracker</b>, for whichever character is selected above. It stays on this device only — nothing here is ever sent to anyone's sheet. Stacks like Magic counters: Poison ×3 and Burning ×1 can both be active at once.</div>
+      <div id="effectChips" class="effect-chip-row"></div>
+      <label>Add / Adjust</label>
+      <input type="text" id="effectName" placeholder="e.g. Poison, Burning, Blessed">
+      <div class="effect-quicklist">
+        <button type="button" class="effect-quick-btn" onclick="$('effectName').value='Poison'">Poison</button>
+        <button type="button" class="effect-quick-btn" onclick="$('effectName').value='Burning'">Burning</button>
+        <button type="button" class="effect-quick-btn" onclick="$('effectName').value='Bleeding'">Bleeding</button>
+        <button type="button" class="effect-quick-btn" onclick="$('effectName').value='Blessed'">Blessed</button>
+        <button type="button" class="effect-quick-btn" onclick="$('effectName').value='Stunned'">Stunned</button>
+        <button type="button" class="effect-quick-btn" onclick="$('effectName').value='Frozen'">Frozen</button>
+        <button type="button" class="effect-quick-btn" onclick="$('effectName').value='Shielded'">Shielded</button>
+        <button type="button" class="effect-quick-btn" onclick="$('effectName').value='Marked'">Marked</button>
+      </div>
+      <div class="row2">
+        <div><label>Amount</label><input type="number" id="effectAmount" placeholder="1" value="1" min="1"></div>
+        <div><label>Mode</label>
+          <select id="effectMode">
+            <option value="add">Add stacks</option>
+            <option value="remove">Remove stacks</option>
+            <option value="set">Set exact amount</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="effectBtn" onclick="applyEffectChange()">Apply</button>
+      <div class="row2" style="margin-top:16px;">
+        <button class="btn btn-secondary" onclick="clearOneEffect()">Clear This Effect</button>
+        <button class="btn btn-secondary" onclick="clearAllEffectsForChar()">Clear All For This Character</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB: TOOLS ═══ -->
+  <div class="tab-panel" id="tab-tools">
+
+    <div class="card">
+      <div class="card-title">Random Target</div>
+      <div class="hint" style="margin-top:0;">Edit the list below to match your actual party — it's remembered on this device.</div>
+      <textarea id="partyList" placeholder="One name per line" style="min-height:110px;"></textarea>
+      <button class="btn btn-primary" onclick="pickRandomTarget()">Pick Random</button>
+      <div class="result-box" id="randomResultBox">
+        <div class="result-big" id="randomResultName"></div>
       </div>
     </div>
 
-    <!-- MEDICAL / TOOL -->
-    <div class="type-section" id="sectionMed">
-      <label>Effect</label>
-      <input type="text" id="mEffect" placeholder="e.g. Heals 2d4 HP">
+    <div class="card">
+      <div class="card-title">Dice Roller</div>
+      <div class="dice-grid">
+        <button class="dice-btn" onclick="rollDie(4)">d4</button>
+        <button class="dice-btn" onclick="rollDie(6)">d6</button>
+        <button class="dice-btn" onclick="rollDie(8)">d8</button>
+        <button class="dice-btn" onclick="rollDie(10)">d10</button>
+        <button class="dice-btn" onclick="rollDie(12)">d12</button>
+        <button class="dice-btn" onclick="rollDie(20)">d20</button>
+        <button class="dice-btn" onclick="rollDie(100)">d100</button>
+      </div>
+      <label>Or Custom</label>
+      <div class="row2">
+        <input type="text" id="customDiceExpr" placeholder="e.g. 2d6+3">
+        <button class="btn btn-secondary" onclick="rollCustomExpr()">Roll</button>
+      </div>
+      <div class="result-box" id="diceResultBox">
+        <div class="result-big" id="diceResultNum"></div>
+        <div class="result-small" id="diceResultDetail"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Initiative Tracker</div>
+      <div class="hint" style="margin-top:0;">Local to this device for the current session — not synced to anyone's sheet.</div>
+      <div class="row2">
+        <input type="text" id="initName" placeholder="Name">
+        <input type="number" id="initValue" placeholder="Initiative">
+      </div>
+      <button class="btn btn-secondary" onclick="addInitEntry()">+ Add Combatant</button>
+      <div id="initList" style="margin-top:12px;"></div>
+      <div class="row2" style="margin-top:10px;">
+        <button class="btn btn-primary" onclick="nextInitTurn()">Next Turn</button>
+        <button class="btn btn-secondary" onclick="clearInitList()">Clear All</button>
+      </div>
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-title">Actions</div>
-    <div id="actionsList"></div>
-    <button class="btn btn-secondary" onclick="addActionRow()">+ Add Action</button>
-  </div>
-
-  <button class="btn btn-primary" id="sendBtn" onclick="sendItem()">Send Item</button>
-  <div class="status" id="statusBox"></div>
-
-  <div class="card">
-    <div class="card-title">Adjust Character</div>
-    <label>Field</label>
-    <select id="adjField" onchange="onAdjFieldChange()">
-      <option value="level">Level</option>
-      <option value="str">STR</option>
-      <option value="mnd">MND</option>
-      <option value="sol">SOL</option>
-      <option value="def">DEF</option>
-      <option value="hp">HP</option>
-      <option value="ac">AC Override</option>
-    </select>
-    <div class="row2">
-      <div><label id="adjValueLabel">New Value</label><input type="text" id="adjValue" placeholder="New value"></div>
-      <div id="adjHpMaxWrap" style="display:none;"><label>Max HP (optional)</label><input type="text" id="adjHpMax" placeholder="Leave blank to keep current max"></div>
+  <!-- ═══ TAB: LOG ═══ -->
+  <div class="tab-panel" id="tab-log">
+    <div class="card">
+      <div class="card-title">Sent Log (this device only)</div>
+      <div class="hint" style="margin-top:0;">This is a record of what <b>you've sent</b> from this device — not a live view of their sheet. They may have used, removed, or changed things themselves since.</div>
+      <div id="sentLogList" style="margin-top:10px;"></div>
     </div>
-    <div class="hint">AC Override sets the manual override field on their sheet — same as typing a number into the AC box themselves. Leave it in mind that it replaces their derived AC entirely.</div>
-    <button class="btn btn-primary" id="adjBtn" onclick="sendStatChange()">Send Change</button>
   </div>
 
-  <div class="card">
-    <div class="card-title">Remove Item</div>
-    <label>Item Name</label>
-    <input type="text" id="removeName" placeholder="Exact item name">
-    <div class="hint">Matches by name, exactly (not case-sensitive). If they have two items with the same name, only one gets removed.</div>
-    <button class="btn btn-primary" id="removeBtn" onclick="sendRemoval()">Send Removal</button>
-  </div>
-
-  <div class="card">
-    <div class="card-title">Sent Log (this device only)</div>
-    <div class="hint" style="margin-top:0;">This is a record of what <b>you've sent</b> from this device — not a live view of their sheet. They may have used, removed, or changed things themselves since.</div>
-    <div id="sentLogList" style="margin-top:10px;"></div>
-  </div>
 </div>
 
 <script>
@@ -585,6 +756,7 @@ function updateTokenStatus() {
 function onCharChange() {
   $('customRepoWrap').style.display = $('charSelect').value === '__custom' ? 'block' : 'none';
   renderSentLog();
+  renderEffectChips();
 }
 
 function getRepo() {
@@ -882,6 +1054,186 @@ function onAdjFieldChange() {
   $('adjValueLabel').textContent = isHp ? 'Current HP' : 'New Value';
 }
 
+// ── TABS ──
+function switchTab(name) {
+  ['give','effects','tools','log'].forEach(function(t) {
+    $('tab-'+t).classList.toggle('active', t === name);
+    $('tabBtn-'+t).classList.toggle('active', t === name);
+  });
+  if (name === 'log') renderSentLog();
+  if (name === 'effects') renderEffectChips();
+}
+
+// ── STATUS EFFECTS — DM Eyes Only. Purely local to this device, per character.
+// Nothing here is ever sent to GitHub or to anyone's sheet — it's just your own notes.
+function getEffectsStore() {
+  var store; try { store = JSON.parse(localStorage.getItem('secret_side_dm_effects')) || {}; } catch(e) { store = {}; }
+  return store;
+}
+function saveEffectsStore(store) {
+  try { localStorage.setItem('secret_side_dm_effects', JSON.stringify(store)); } catch(e) {}
+}
+function renderEffectChips() {
+  var repo = getRepo();
+  var wrap = $('effectChips');
+  if (!wrap) return;
+  if (!repo) { wrap.innerHTML = '<div class="effect-chip-empty">Pick a character first.</div>'; return; }
+  var store = getEffectsStore();
+  var effects = store[repo] || {};
+  var names = Object.keys(effects).filter(function(n){ return effects[n] > 0; });
+  if (!names.length) { wrap.innerHTML = '<div class="effect-chip-empty">No active effects tracked for this character.</div>'; return; }
+  wrap.innerHTML = names.map(function(name) {
+    var safe = name.replace(/'/g, "\\'");
+    return '<div class="effect-chip">' +
+      '<span class="effect-chip-name">' + esc(name) + '</span>' +
+      '<span class="effect-chip-count">&times;' + effects[name] + '</span>' +
+      '<button class="effect-chip-btn" onclick="adjustEffect(\'' + safe + '\',-1)">&minus;</button>' +
+      '<button class="effect-chip-btn" onclick="adjustEffect(\'' + safe + '\',1)">+</button>' +
+      '<button class="effect-chip-x" onclick="removeEffect(\'' + safe + '\')" title="Remove">&times;</button>' +
+    '</div>';
+  }).join('');
+}
+function adjustEffect(name, delta) {
+  var repo = getRepo(); if (!repo) return;
+  var store = getEffectsStore();
+  if (!store[repo]) store[repo] = {};
+  store[repo][name] = (store[repo][name] || 0) + delta;
+  if (store[repo][name] <= 0) delete store[repo][name];
+  saveEffectsStore(store);
+  renderEffectChips();
+}
+function removeEffect(name) {
+  var repo = getRepo(); if (!repo) return;
+  var store = getEffectsStore();
+  if (store[repo]) delete store[repo][name];
+  saveEffectsStore(store);
+  renderEffectChips();
+}
+function applyEffectChange() {
+  var repo = getRepo();
+  if (!repo) { setStatus('Pick a character first.', 'err'); return; }
+  var name = $('effectName').value.trim();
+  if (!name) { setStatus('Name the effect first.', 'err'); return; }
+  var amt = parseInt($('effectAmount').value) || 1;
+  var mode = $('effectMode').value;
+  var store = getEffectsStore();
+  if (!store[repo]) store[repo] = {};
+  if (mode === 'add') store[repo][name] = (store[repo][name] || 0) + amt;
+  else if (mode === 'remove') store[repo][name] = (store[repo][name] || 0) - amt;
+  else store[repo][name] = amt;
+  if (store[repo][name] <= 0) delete store[repo][name];
+  saveEffectsStore(store);
+  renderEffectChips();
+  setStatus('Updated ' + name + ' for this character (saved on this device only).', 'ok');
+  $('effectName').value = '';
+}
+function clearOneEffect() {
+  var repo = getRepo();
+  if (!repo) { setStatus('Pick a character first.', 'err'); return; }
+  var name = $('effectName').value.trim();
+  if (!name) { setStatus('Name the effect first.', 'err'); return; }
+  var store = getEffectsStore();
+  if (store[repo]) delete store[repo][name];
+  saveEffectsStore(store);
+  renderEffectChips();
+  setStatus('Cleared ' + name + '.', 'ok');
+}
+function clearAllEffectsForChar() {
+  var repo = getRepo();
+  if (!repo) { setStatus('Pick a character first.', 'err'); return; }
+  var store = getEffectsStore();
+  store[repo] = {};
+  saveEffectsStore(store);
+  renderEffectChips();
+  setStatus('Cleared all effects for this character.', 'ok');
+}
+
+// ── RANDOM TARGET ──
+function loadPartyList() {
+  var saved; try { saved = JSON.parse(localStorage.getItem('secret_side_party_list')); } catch(e) {}
+  var names = saved && saved.length ? saved : ['Sanguine','Sloan','Camille','Estella','Odette','Asher',"Mike's Character",'Meatball'];
+  $('partyList').value = names.join('\n');
+}
+function pickRandomTarget() {
+  var names = $('partyList').value.split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
+  if (!names.length) return;
+  try { localStorage.setItem('secret_side_party_list', JSON.stringify(names)); } catch(e) {}
+  var pick = names[Math.floor(Math.random() * names.length)];
+  $('randomResultBox').classList.add('show');
+  $('randomResultName').textContent = pick;
+}
+
+// ── DICE ROLLER ──
+function rollDie(sides) {
+  var r = 1 + Math.floor(Math.random() * sides);
+  $('diceResultBox').classList.add('show');
+  $('diceResultNum').textContent = r;
+  $('diceResultDetail').textContent = 'd' + sides;
+}
+function rollCustomExpr() {
+  var expr = $('customDiceExpr').value.trim();
+  if (!expr) return;
+  var m = expr.match(/^(\d*)d(\d+)\s*([+-]\s*\d+)?$/i);
+  $('diceResultBox').classList.add('show');
+  if (!m) { $('diceResultNum').textContent = '—'; $('diceResultDetail').textContent = 'Format like 2d6+3'; return; }
+  var count = parseInt(m[1]) || 1;
+  var sides = parseInt(m[2]);
+  var mod = m[3] ? parseInt(m[3].replace(/\s+/g,'')) : 0;
+  var rolls = [];
+  for (var i = 0; i < count; i++) rolls.push(1 + Math.floor(Math.random() * sides));
+  var total = rolls.reduce(function(a,b){ return a+b; }, 0) + mod;
+  $('diceResultNum').textContent = total;
+  $('diceResultDetail').textContent = rolls.join(' + ') + (mod ? (mod > 0 ? ' + ' + mod : ' − ' + Math.abs(mod)) : '');
+}
+
+// ── INITIATIVE TRACKER (local scratchpad for the current session) ──
+var initEntries = [], initTurn = 0;
+function loadInit() {
+  var d; try { d = JSON.parse(localStorage.getItem('secret_side_init')); } catch(e) {}
+  if (d) { initEntries = d.entries || []; initTurn = d.turn || 0; }
+  renderInit();
+}
+function saveInit() {
+  try { localStorage.setItem('secret_side_init', JSON.stringify({ entries: initEntries, turn: initTurn })); } catch(e) {}
+}
+function addInitEntry() {
+  var name = $('initName').value.trim();
+  var val = parseInt($('initValue').value);
+  if (!name || isNaN(val)) return;
+  initEntries.push({ name: name, val: val });
+  initEntries.sort(function(a,b){ return b.val - a.val; });
+  $('initName').value = ''; $('initValue').value = '';
+  saveInit(); renderInit();
+}
+function removeInitEntry(i) {
+  initEntries.splice(i, 1);
+  if (initTurn >= initEntries.length) initTurn = 0;
+  saveInit(); renderInit();
+}
+function nextInitTurn() {
+  if (!initEntries.length) return;
+  initTurn = (initTurn + 1) % initEntries.length;
+  saveInit(); renderInit();
+}
+function clearInitList() {
+  initEntries = []; initTurn = 0;
+  saveInit(); renderInit();
+}
+function renderInit() {
+  var wrap = $('initList');
+  if (!initEntries.length) { wrap.innerHTML = '<div class="hint" style="margin-top:0;">No combatants added yet.</div>'; return; }
+  wrap.innerHTML = initEntries.map(function(e, i) {
+    var active = initEntries.length && i === (initTurn % initEntries.length);
+    return '<div class="init-row' + (active ? ' active-turn' : '') + '">' +
+      '<div class="init-row-name">' + (active ? '▶ ' : '') + esc(e.name) + '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;">' +
+        '<span class="init-badge">' + e.val + '</span>' +
+        '<button class="log-edit-btn" onclick="removeInitEntry(' + i + ')">Remove</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
 populateTemplates();
 buildTypePills();
 showTypeSection();
@@ -889,6 +1241,9 @@ addActionRow();
 updateTokenStatus();
 onAdjFieldChange();
 renderSentLog();
+loadPartyList();
+loadInit();
+renderEffectChips();
 $('tokenBody').style.display = localStorage.getItem('secret_side_sender_token') ? 'none' : 'block';
 </script>
 </body>
