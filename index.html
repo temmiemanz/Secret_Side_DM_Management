@@ -175,6 +175,38 @@ textarea { resize: vertical; min-height: 60px; }
 .init-row.active-turn { background: rgba(200,168,75,0.08); border-radius: 6px; }
 .init-row-name { display: flex; align-items: center; gap: 6px; }
 .init-badge { font-family: inherit; font-weight: 700; color: var(--accent); font-size: 12px; min-width: 22px; text-align: right; }
+
+.deploy-watch {
+  display: flex; align-items: center; gap: 8px; margin-top: 8px;
+  padding: 9px 12px; border-radius: var(--radius); font-size: 12px;
+}
+.deploy-watch.pending { background: rgba(200,168,75,0.1); border: 1px solid rgba(200,168,75,0.25); color: var(--accent); }
+.deploy-watch.ready   { background: rgba(74,154,106,0.12); border: 1px solid rgba(74,154,106,0.3); color: #7ac89a; }
+.deploy-watch.failed  { background: rgba(208,80,80,0.12); border: 1px solid rgba(208,80,80,0.3); color: #e58080; }
+.deploy-watch-spin {
+  width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid rgba(200,168,75,0.3); border-top-color: var(--accent);
+  animation: deployspin 0.8s linear infinite;
+}
+@keyframes deployspin { to { transform: rotate(360deg); } }
+.deploy-watch-x {
+  margin-left: auto; background: none; border: none; color: inherit; opacity: 0.6;
+  cursor: pointer; font-size: 14px; line-height: 1; padding: 2px 4px; font-family: inherit;
+}
+.deploy-watch-x:hover { opacity: 1; }
+
+.char-link-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.char-link {
+  font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 99px;
+  border: 1px solid var(--border2); background: var(--panel2); color: var(--text);
+  text-decoration: none; display: inline-block;
+}
+.char-link:hover { border-color: var(--accent); color: var(--accent); }
+.view-live-link {
+  display: block; text-align: center; margin-top: 10px; font-size: 12px; font-weight: 600;
+  color: var(--accent); text-decoration: none;
+}
+.view-live-link:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -202,6 +234,12 @@ textarea { resize: vertical; min-height: 60px; }
     </div>
   </div>
 
+  <div class="card">
+    <div class="card-title">Character Pages</div>
+    <div class="hint" style="margin-top:0;">Direct links to everyone's live sheet.</div>
+    <div class="char-link-grid" id="charLinkGrid"></div>
+  </div>
+
   <div class="sticky-head">
     <div class="card" style="margin-bottom:10px;">
       <div class="card-title">Send To</div>
@@ -209,7 +247,7 @@ textarea { resize: vertical; min-height: 60px; }
         <option value="Secret-Side_Sanguine">Sanguine / Tre</option>
         <option value="Secret-Side_Sloan">Sloan</option>
         <option value="Secret-Side_Camille">Camille</option>
-        <option value="Secret-Side_Estella-">Estella</option>
+        <option value="Secret-Side_Estella">Estella</option>
         <option value="Secret-Side_Odette">Odette</option>
         <option value="Secret-Side_Asher">Asher</option>
         <option value="Secret-Side_FF">Mike's character (FF)</option>
@@ -220,6 +258,7 @@ textarea { resize: vertical; min-height: 60px; }
         <label>Repo Name</label>
         <input type="text" id="customRepo" placeholder="e.g. Secret-Side_Asher" oninput="renderEffectChips()">
       </div>
+      <a id="viewLiveLink" href="#" target="_blank" rel="noopener" class="view-live-link">Open this character's page ↗</a>
     </div>
 
     <div class="tab-bar">
@@ -229,6 +268,7 @@ textarea { resize: vertical; min-height: 60px; }
       <button class="tab-btn"        id="tabBtn-log"    onclick="switchTab('log')">Log</button>
     </div>
     <div class="status" id="statusBox"></div>
+    <div id="deployWatchList"></div>
   </div>
 
   <!-- ═══ TAB: GIVE / EDIT ═══ -->
@@ -448,6 +488,32 @@ textarea { resize: vertical; min-height: 60px; }
 </div>
 
 <script>
+var GH_OWNER = 'temmiemanz';
+var CHARACTERS = [
+  { repo: 'Secret-Side_Sanguine', name: 'Sanguine / Tre' },
+  { repo: 'Secret-Side_Sloan',    name: 'Sloan' },
+  { repo: 'Secret-Side_Camille',  name: 'Camille' },
+  { repo: 'Secret-Side_Estella',  name: 'Estella' },
+  { repo: 'Secret-Side_Odette',   name: 'Odette' },
+  { repo: 'Secret-Side_Asher',    name: 'Asher' },
+  { repo: 'Secret-Side_FF',       name: "Mike's Character" },
+  { repo: 'Secret-Side_Meatball', name: 'Meatball (DM)' }
+];
+function charDisplayName(repo) {
+  var found = CHARACTERS.find(function(c){ return c.repo === repo; });
+  return found ? found.name : repo;
+}
+function liveUrlFor(repo) {
+  return 'https://' + GH_OWNER + '.github.io/' + repo + '/';
+}
+function renderCharLinks() {
+  var wrap = $('charLinkGrid');
+  if (!wrap) return;
+  wrap.innerHTML = CHARACTERS.map(function(c) {
+    return '<a class="char-link" href="' + liveUrlFor(c.repo) + '" target="_blank" rel="noopener">' + esc(c.name) + ' ↗</a>';
+  }).join('');
+}
+
 var TYPES = ['Weapon','Armor','Ammo','Medical','Tool','Valuable','Junk','Other'];
 var selectedType = 'Weapon';
 
@@ -757,6 +823,9 @@ function onCharChange() {
   $('customRepoWrap').style.display = $('charSelect').value === '__custom' ? 'block' : 'none';
   renderSentLog();
   renderEffectChips();
+  var repo = getRepo();
+  var link = $('viewLiveLink');
+  if (link) { link.href = repo ? liveUrlFor(repo) : '#'; link.style.display = repo ? 'block' : 'none'; }
 }
 
 function getRepo() {
@@ -978,6 +1047,7 @@ function sendToMailbox(mutateFn, btn, successMsg, logDesc, itemForLog) {
       if (!r.ok) return r.json().then(function(e){ throw new Error(e.message || ('Write failed (status ' + r.status + ')')); });
       setStatus(successMsg, 'ok');
       logSent(repo, logDesc, itemForLog);
+      startDeployWatch(repo, token);
     })
     .catch(function(err) {
       setStatus('Failed: ' + err.message, 'err');
@@ -1234,6 +1304,106 @@ function renderInit() {
   }).join('');
 }
 
+// ── DEPLOY WATCHER ──
+// After a successful send, GitHub still has to rebuild and redeploy that
+// character's page before the change is actually live. This polls GitHub
+// Actions for the run our commit just triggered and lets you know the
+// moment their page is really updated — so you know exactly when it's
+// safe to tell them to refresh.
+var deployWatches = {}; // repo -> { state: 'pending'|'ready'|'failed'|'timeout', label, sentAt, tries }
+
+function startDeployWatch(repo, token) {
+  var label = charDisplayName(repo);
+  deployWatches[repo] = { state: 'pending', label: label, sentAt: Date.now(), tries: 0 };
+  renderDeployWatches();
+  if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+    try { Notification.requestPermission(); } catch(e) {}
+  }
+  pollDeployWatch(repo, token);
+}
+
+function pollDeployWatch(repo, token) {
+  var watch = deployWatches[repo];
+  if (!watch) return; // dismissed
+  watch.tries++;
+  var MAX_TRIES = 40; // ~3.5 minutes at the poll interval below
+
+  fetch('https://api.github.com/repos/temmiemanz/' + repo + '/actions/runs?per_page=5', {
+    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json' }
+  })
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(data) {
+      var watch = deployWatches[repo];
+      if (!watch) return; // dismissed while this request was in flight
+
+      var runs = (data && data.workflow_runs) || [];
+      // Find the run that matches our send — created at or after we sent it, allowing
+      // for clock skew and the few seconds GitHub takes to actually kick the run off.
+      var match = runs.find(function(run) {
+        return new Date(run.created_at).getTime() >= (watch.sentAt - 20000);
+      });
+
+      if (match && match.status === 'completed') {
+        watch.state = match.conclusion === 'success' ? 'ready' : 'failed';
+        renderDeployWatches();
+        notifyDeployDone(watch.label, watch.state === 'ready');
+        if (watch.state === 'ready') setTimeout(function(){ dismissDeployWatch(repo); }, 15000);
+        return;
+      }
+
+      if (watch.tries >= MAX_TRIES) {
+        watch.state = 'timeout';
+        renderDeployWatches();
+        return;
+      }
+      setTimeout(function(){ pollDeployWatch(repo, token); }, 5000);
+    })
+    .catch(function() {
+      var watch = deployWatches[repo];
+      if (!watch) return;
+      if (watch.tries >= MAX_TRIES) { watch.state = 'timeout'; renderDeployWatches(); return; }
+      setTimeout(function(){ pollDeployWatch(repo, token); }, 5000);
+    });
+}
+
+function notifyDeployDone(label, success) {
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  try {
+    new Notification(success ? '✅ ' + label + ' is live' : '⚠️ ' + label + ' deploy failed', {
+      body: success ? 'Their page is updated — safe to tell them to refresh.' : 'Check the Actions tab on their repo.'
+    });
+  } catch(e) {}
+}
+
+function dismissDeployWatch(repo) {
+  delete deployWatches[repo];
+  renderDeployWatches();
+}
+
+function renderDeployWatches() {
+  var wrap = $('deployWatchList');
+  if (!wrap) return;
+  var repos = Object.keys(deployWatches);
+  wrap.innerHTML = repos.map(function(repo) {
+    var w = deployWatches[repo];
+    if (w.state === 'pending') {
+      return '<div class="deploy-watch pending"><span class="deploy-watch-spin"></span>' +
+        'Deploying to ' + esc(w.label) + '…' +
+        '<button class="deploy-watch-x" onclick="dismissDeployWatch(\'' + repo + '\')">&times;</button></div>';
+    }
+    if (w.state === 'ready') {
+      return '<div class="deploy-watch ready">✅ ' + esc(w.label) + ' is live — tell them to refresh!' +
+        '<button class="deploy-watch-x" onclick="dismissDeployWatch(\'' + repo + '\')">&times;</button></div>';
+    }
+    if (w.state === 'failed') {
+      return '<div class="deploy-watch failed">⚠️ ' + esc(w.label) + '\'s deploy failed — check the Actions tab on their repo.' +
+        '<button class="deploy-watch-x" onclick="dismissDeployWatch(\'' + repo + '\')">&times;</button></div>';
+    }
+    return '<div class="deploy-watch pending">⏳ Still waiting on ' + esc(w.label) + ' — check the Actions tab if this seems stuck.' +
+      '<button class="deploy-watch-x" onclick="dismissDeployWatch(\'' + repo + '\')">&times;</button></div>';
+  }).join('');
+}
+
 populateTemplates();
 buildTypePills();
 showTypeSection();
@@ -1244,6 +1414,8 @@ renderSentLog();
 loadPartyList();
 loadInit();
 renderEffectChips();
+renderCharLinks();
+onCharChange();
 $('tokenBody').style.display = localStorage.getItem('secret_side_sender_token') ? 'none' : 'block';
 </script>
 </body>
