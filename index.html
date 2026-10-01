@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>DM Screen — Secret Side</title>
-<link rel="icon" type="image/png" href="favicon.png">
+<link rel="icon" type="image/png" sizes="256x256" href="favicon.png">
 <style>
 :root {
   --bg:      #0c0c10;
@@ -20,19 +20,16 @@
   --red:     #d05050;
   --green:   #4a9a6a;
   --radius:  8px;
+  --char-color: var(--accent);
 }
 * { box-sizing: border-box; }
-html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+html { scroll-padding-top: 54px; }
 body {
   margin: 0; font-family: system-ui, -apple-system, sans-serif;
   background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.5;
-  padding: max(20px, env(safe-area-inset-top)) 16px max(40px, env(safe-area-inset-bottom));
+  padding-bottom: calc(64px + env(safe-area-inset-bottom));
 }
-.wrap { max-width: 560px; margin: 0 auto; }
-h1 { font-size: 20px; margin: 0 0 4px; }
-.sub { color: var(--dim); font-size: 13px; margin: 0 0 20px; }
-.card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
-.card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 12px; }
+a { color: inherit; }
 label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 10px 0 4px; }
 label:first-child { margin-top: 0; }
 input[type=text], input[type=number], input[type=password], select, textarea {
@@ -49,6 +46,171 @@ textarea { resize: vertical; min-height: 60px; }
 .check-row input { width: auto; }
 .hint { font-size: 12px; color: var(--dim); margin-top: 6px; line-height: 1.5; }
 .hint b { color: var(--muted); }
+.btn {
+  width: 100%; padding: 12px; font-size: 14px; font-weight: 700; letter-spacing: 0.04em;
+  border-radius: var(--radius); cursor: pointer; font-family: inherit; border: none; margin-top: 6px;
+}
+.btn-primary { background: var(--accent); color: #1a1508; }
+.btn-secondary { background: none; border: 1px dashed var(--border2); color: var(--dim); }
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+.btn:disabled { opacity: 0.5; cursor: default; }
+
+/* ── TOPBAR ── */
+.topbar {
+  position: sticky; top: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between;
+  padding: calc(10px + env(safe-area-inset-top)) 14px 10px; background: var(--bg); border-bottom: 1px solid var(--border);
+}
+.icon-btn {
+  width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border2); background: var(--panel2);
+  color: var(--text); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+.topbar-title { font-size: 15px; font-weight: 700; }
+
+.status { margin: 10px 14px 0; padding: 10px 12px; border-radius: var(--radius); font-size: 13px; display: none; }
+.status.show { display: block; }
+.status.ok { background: rgba(74,154,106,0.12); border: 1px solid rgba(74,154,106,0.3); color: #7ac89a; }
+.status.err { background: rgba(208,80,80,0.12); border: 1px solid rgba(208,80,80,0.3); color: #e58080; }
+.status.busy { background: rgba(200,168,75,0.1); border: 1px solid rgba(200,168,75,0.25); color: var(--accent); }
+
+#deployWatchList { padding: 0 14px; }
+.deploy-watch {
+  display: flex; align-items: center; gap: 8px; margin-top: 8px;
+  padding: 9px 12px; border-radius: var(--radius); font-size: 12px;
+}
+.deploy-watch.pending { background: rgba(200,168,75,0.1); border: 1px solid rgba(200,168,75,0.25); color: var(--accent); }
+.deploy-watch.ready   { background: rgba(74,154,106,0.12); border: 1px solid rgba(74,154,106,0.3); color: #7ac89a; }
+.deploy-watch.failed  { background: rgba(208,80,80,0.12); border: 1px solid rgba(208,80,80,0.3); color: #e58080; }
+.deploy-watch-spin {
+  width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid rgba(200,168,75,0.3); border-top-color: var(--accent); animation: deployspin 0.8s linear infinite;
+}
+@keyframes deployspin { to { transform: rotate(360deg); } }
+.deploy-watch-x { margin-left: auto; background: none; border: none; color: inherit; opacity: 0.6; cursor: pointer; font-size: 14px; line-height: 1; padding: 2px 4px; font-family: inherit; }
+.deploy-watch-x:hover { opacity: 1; }
+
+/* ── SCREENS ── */
+.screen { display: none; padding: 14px; max-width: 720px; margin: 0 auto; }
+.screen.active { display: block; }
+
+/* ── BOTTOM NAV ── */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 30; display: flex;
+  background: var(--panel); border-top: 1px solid var(--border2); padding-bottom: env(safe-area-inset-bottom);
+}
+.bottom-nav button {
+  flex: 1; padding: 10px 4px 8px; background: none; border: none; color: var(--dim);
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  cursor: pointer; font-family: inherit; display: flex; flex-direction: column; align-items: center; gap: 3px;
+}
+.bottom-nav button .ic { font-size: 18px; }
+.bottom-nav button.active { color: var(--accent); }
+
+/* ── HOME: character grid ── */
+.char-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 480px) { .char-grid { grid-template-columns: 1fr 1fr; } }
+.char-card {
+  background: var(--panel); border: 1px solid var(--border2); border-left: 4px solid var(--card-color);
+  border-radius: 10px; padding: 14px 14px; display: flex; justify-content: space-between; align-items: center;
+  cursor: pointer; gap: 10px;
+}
+.char-card:hover { border-color: var(--border2); background: var(--panel2); }
+.char-card-name { font-size: 15px; font-weight: 700; }
+.char-card-sub { font-size: 11px; color: var(--dim); margin-top: 3px; }
+.char-card-link {
+  width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border2); background: var(--panel2);
+  color: var(--dim); display: flex; align-items: center; justify-content: center; text-decoration: none; flex-shrink: 0; font-size: 14px;
+}
+.char-card-link:hover { border-color: var(--card-color); color: var(--card-color); }
+
+.section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin: 18px 0 8px; }
+.section-title:first-child { margin-top: 0; }
+
+/* ── DASHBOARD ── */
+.dash-header {
+  background: linear-gradient(135deg, var(--panel), var(--panel2));
+  border: 1px solid var(--char-color); border-radius: 10px; padding: 16px; margin-bottom: 14px;
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+}
+.dash-name { font-size: 20px; font-weight: 700; color: var(--char-color); }
+.dash-live-link {
+  font-size: 12px; font-weight: 700; text-decoration: none; color: var(--char-color);
+  border: 1px solid var(--char-color); padding: 7px 12px; border-radius: 99px; white-space: nowrap;
+}
+
+.dash-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 620px) { .dash-grid { grid-template-columns: 1fr 1fr; } }
+.box { background: var(--panel); border: 1px solid var(--border2); border-radius: 10px; overflow: hidden; }
+.box-head {
+  display: flex; justify-content: space-between; align-items: center; padding: 10px 14px;
+  border-bottom: 1px solid var(--border); font-weight: 700; font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--muted);
+}
+.box-action {
+  font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 6px; border: 1px solid var(--border2);
+  background: none; color: var(--char-color); cursor: pointer; font-family: inherit;
+}
+.box-action:hover { border-color: var(--char-color); }
+.box-body { padding: 12px 14px; max-height: 320px; overflow-y: auto; }
+.box-empty { font-size: 12px; color: var(--dim); font-style: italic; }
+
+.known-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+.known-stat { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+.known-stat-label { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.06em; }
+.known-stat-val { font-size: 14px; font-weight: 700; color: var(--text); }
+
+.item-row, .log-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.item-row:last-child, .log-row:last-child { border-bottom: none; }
+.item-row-main { min-width: 0; }
+.item-row-name { font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-row-type { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.05em; }
+.item-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.mini-btn {
+  font-size: 11px; font-weight: 700; padding: 5px 9px; border-radius: 6px; border: 1px solid var(--border2);
+  background: none; color: var(--dim); cursor: pointer; font-family: inherit; white-space: nowrap;
+}
+.mini-btn:hover { border-color: var(--accent); color: var(--accent); }
+.log-desc { color: var(--text); }
+.log-time { color: var(--dim); font-size: 11px; white-space: nowrap; }
+
+.effect-quicklist { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 2px; }
+.effect-quick-btn {
+  font-size: 11px; padding: 5px 10px; border-radius: 99px; border: 1px solid var(--border2);
+  background: none; color: var(--dim); cursor: pointer; font-family: inherit;
+}
+.effect-quick-btn:hover { border-color: var(--char-color); color: var(--char-color); }
+.effect-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.effect-chip {
+  display: flex; align-items: center; gap: 5px; background: var(--panel2); border: 1px solid var(--border2);
+  border-radius: 99px; padding: 4px 4px 4px 11px; font-size: 12px;
+}
+.effect-chip-name { font-weight: 600; }
+.effect-chip-count { color: var(--char-color); font-weight: 700; font-size: 11px; }
+.effect-chip-btn {
+  width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--border2); background: none;
+  color: var(--muted); font-size: 12px; line-height: 1; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; padding: 0; font-family: inherit;
+}
+.effect-chip-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── PANELS (bottom sheets) ── */
+.panel-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 40; display: none; }
+.panel-overlay.show { display: block; }
+.panel {
+  position: fixed; left: 0; right: 0; bottom: -100%; max-height: 86vh; overflow-y: auto;
+  background: var(--bg); border-top: 1px solid var(--border2); border-radius: 16px 16px 0 0; z-index: 50;
+  transition: bottom 0.25s ease; padding: 10px 16px calc(20px + env(safe-area-inset-bottom));
+}
+.panel.open { bottom: 0; }
+.panel-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 99px; margin: 6px auto 10px; }
+.panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.panel-title { font-size: 16px; font-weight: 700; }
+.panel-target { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.panel-target b { color: var(--char-color); }
+
 .type-pills { display: flex; flex-wrap: wrap; gap: 6px; }
 .type-pill {
   font-size: 12px; padding: 6px 12px; border-radius: 99px; border: 1px solid var(--border2);
@@ -62,458 +224,484 @@ textarea { resize: vertical; min-height: 60px; }
   padding: 10px; margin-bottom: 8px; position: relative;
 }
 .action-row-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 6px; }
-.action-rm {
-  position: absolute; top: 8px; right: 8px; background: none; border: none; color: var(--dim);
-  font-size: 15px; cursor: pointer; padding: 2px 6px; line-height: 1;
-}
+.action-rm { position: absolute; top: 8px; right: 8px; background: none; border: none; color: var(--dim); font-size: 15px; cursor: pointer; padding: 2px 6px; line-height: 1; }
 .action-rm:hover { color: var(--red); }
-.btn {
-  width: 100%; padding: 12px; font-size: 14px; font-weight: 700; letter-spacing: 0.04em;
-  border-radius: var(--radius); cursor: pointer; font-family: inherit; border: none;
-  margin-top: 6px;
-}
-.btn-primary { background: var(--accent); color: #1a1508; }
-.btn-secondary { background: none; border: 1px dashed var(--border2); color: var(--dim); }
-.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
-.btn:disabled { opacity: 0.5; cursor: default; }
-.status { margin-top: 12px; padding: 10px 12px; border-radius: var(--radius); font-size: 13px; display: none; }
-.status.show { display: block; }
-.status.ok { background: rgba(74,154,106,0.12); border: 1px solid rgba(74,154,106,0.3); color: #7ac89a; }
-.status.err { background: rgba(208,80,80,0.12); border: 1px solid rgba(208,80,80,0.3); color: #e58080; }
-.status.busy { background: rgba(200,168,75,0.1); border: 1px solid rgba(200,168,75,0.25); color: var(--accent); }
-.collapsible-head {
-  display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none;
-}
-.chev { font-size: 10px; color: var(--muted); transition: transform 0.15s; }
-.chev.open { transform: rotate(180deg); }
-.token-note { font-size: 12px; color: var(--dim); line-height: 1.6; margin-top: 8px; }
-.token-saved { font-size: 12px; color: #7ac89a; margin-top: 6px; }
-.log-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
-.log-row:last-child { border-bottom: none; }
-.log-desc { color: var(--text); }
-.log-time { color: var(--dim); font-size: 11px; white-space: nowrap; }
-.log-edit-btn {
-  font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 6px;
-  border: 1px solid var(--border2); background: none; color: var(--muted);
-  cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0;
-}
-.log-edit-btn:hover { border-color: var(--accent); color: var(--accent); }
 .edit-banner {
-  background: rgba(200,168,75,0.12); border: 1px solid rgba(200,168,75,0.3);
-  color: var(--accent); font-size: 13px; line-height: 1.6;
-  padding: 10px 12px; border-radius: var(--radius); margin-bottom: 14px;
+  background: rgba(200,168,75,0.12); border: 1px solid rgba(200,168,75,0.3); color: var(--accent);
+  font-size: 13px; line-height: 1.6; padding: 10px 12px; border-radius: var(--radius); margin-bottom: 14px;
 }
 .edit-banner button {
-  display: block; margin-top: 6px; background: none; border: 1px solid rgba(200,168,75,0.4);
-  color: var(--accent); font-size: 12px; font-weight: 600; padding: 5px 10px;
-  border-radius: 6px; cursor: pointer; font-family: inherit;
+  display: block; margin-top: 6px; background: none; border: 1px solid rgba(200,168,75,0.4); color: var(--accent);
+  font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-family: inherit;
 }
+.card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin: 16px 0 8px; }
+.card-title:first-child { margin-top: 0; }
 
-/* sticky context header — character + tabs stay put while scrolling a tab's content */
-.sticky-head {
-  position: sticky; top: 0; z-index: 20;
-  background: var(--bg); padding-top: 6px; margin: 0 -16px; padding-left: 16px; padding-right: 16px;
-  border-bottom: 1px solid var(--border);
-}
-.tab-bar { display: flex; gap: 6px; margin: 10px 0 12px; overflow-x: auto; }
-.tab-btn {
-  flex: 1; padding: 10px 6px; font-size: 11px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.04em; border: 1px solid var(--border2); background: var(--panel);
-  color: var(--dim); border-radius: var(--radius); cursor: pointer; font-family: inherit; white-space: nowrap;
-}
-.tab-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(200,168,75,0.1); }
-.tab-panel { display: none; }
-.tab-panel.active { display: block; }
-
-/* status effect chips — a stack of named counters, distinct from the GitHub-token setup card above */
-.effect-quicklist { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 2px; }
-.effect-quick-btn {
-  font-size: 12px; padding: 5px 11px; border-radius: 99px; border: 1px solid var(--border2);
-  background: none; color: var(--dim); cursor: pointer; font-family: inherit;
-}
-.effect-quick-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-.effect-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
-.effect-chip-empty { font-size: 12px; color: var(--dim); font-style: italic; }
-.effect-chip {
-  display: flex; align-items: center; gap: 5px;
-  background: var(--panel2); border: 1px solid var(--border2); border-radius: 99px;
-  padding: 4px 5px 4px 12px; font-size: 13px;
-}
-.effect-chip-name { color: var(--text); font-weight: 600; }
-.effect-chip-count { color: var(--accent); font-weight: 700; font-size: 12px; }
-.effect-chip-btn, .effect-chip-x {
-  width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--border2);
-  background: none; color: var(--muted); font-size: 13px; line-height: 1; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; padding: 0; font-family: inherit;
-}
-.effect-chip-btn:hover, .effect-chip-x:hover { border-color: var(--accent); color: var(--accent); }
-.effect-chip-x { margin-left: 2px; }
-
-.result-box {
-  display: none; margin-top: 12px; text-align: center; padding: 16px;
-  background: var(--panel2); border-radius: var(--radius); border: 1px solid var(--border2);
-}
+/* ── TOOLS screen ── */
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+.dice-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+@media (max-width: 380px) { .dice-grid { grid-template-columns: repeat(3, 1fr); } }
+.dice-btn { padding: 12px 4px; font-size: 13px; font-weight: 700; border-radius: var(--radius); border: 1px solid var(--border2); background: var(--panel2); color: var(--text); cursor: pointer; font-family: inherit; }
+.dice-btn:hover { border-color: var(--accent); color: var(--accent); }
+.result-box { display: none; margin-top: 12px; text-align: center; padding: 16px; background: var(--panel2); border-radius: var(--radius); border: 1px solid var(--border2); }
 .result-box.show { display: block; }
 .result-big { font-size: 30px; font-weight: 700; color: var(--accent); line-height: 1.1; }
 .result-small { font-size: 12px; color: var(--dim); margin-top: 4px; }
-
-.dice-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-@media (max-width: 380px) { .dice-grid { grid-template-columns: repeat(3, 1fr); } }
-.dice-btn {
-  padding: 12px 4px; font-size: 13px; font-weight: 700; border-radius: var(--radius);
-  border: 1px solid var(--border2); background: var(--panel2); color: var(--text);
-  cursor: pointer; font-family: inherit;
-}
-.dice-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-.init-row {
-  display: flex; justify-content: space-between; align-items: center; gap: 8px;
-  padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 13px;
-}
+.init-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 13px; }
 .init-row:last-child { border-bottom: none; }
 .init-row.active-turn { background: rgba(200,168,75,0.08); border-radius: 6px; }
 .init-row-name { display: flex; align-items: center; gap: 6px; }
 .init-badge { font-family: inherit; font-weight: 700; color: var(--accent); font-size: 12px; min-width: 22px; text-align: right; }
 
-.deploy-watch {
-  display: flex; align-items: center; gap: 8px; margin-top: 8px;
-  padding: 9px 12px; border-radius: var(--radius); font-size: 12px;
-}
-.deploy-watch.pending { background: rgba(200,168,75,0.1); border: 1px solid rgba(200,168,75,0.25); color: var(--accent); }
-.deploy-watch.ready   { background: rgba(74,154,106,0.12); border: 1px solid rgba(74,154,106,0.3); color: #7ac89a; }
-.deploy-watch.failed  { background: rgba(208,80,80,0.12); border: 1px solid rgba(208,80,80,0.3); color: #e58080; }
-.deploy-watch-spin {
-  width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
-  border: 2px solid rgba(200,168,75,0.3); border-top-color: var(--accent);
-  animation: deployspin 0.8s linear infinite;
-}
-@keyframes deployspin { to { transform: rotate(360deg); } }
-.deploy-watch-x {
-  margin-left: auto; background: none; border: none; color: inherit; opacity: 0.6;
-  cursor: pointer; font-size: 14px; line-height: 1; padding: 2px 4px; font-family: inherit;
-}
-.deploy-watch-x:hover { opacity: 1; }
-
-.char-link-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-.char-link {
-  font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 99px;
-  border: 1px solid var(--border2); background: var(--panel2); color: var(--text);
-  text-decoration: none; display: inline-block;
-}
-.char-link:hover { border-color: var(--accent); color: var(--accent); }
-.view-live-link {
-  display: block; text-align: center; margin-top: 10px; font-size: 12px; font-weight: 600;
-  color: var(--accent); text-decoration: none;
-}
-.view-live-link:hover { text-decoration: underline; }
+.token-note { font-size: 12px; color: var(--dim); line-height: 1.6; margin-top: 8px; }
+.token-saved { font-size: 12px; color: #7ac89a; margin-top: 6px; }
 </style>
 </head>
 <body>
 
-<div class="wrap">
-  <h1>DM Screen</h1>
-  <p class="sub">Build a change, pick a character, send it. It applies next time their sheet loads. Nothing needed from them.</p>
+<div class="topbar">
+  <button class="icon-btn" id="backBtn" onclick="goHome()" style="visibility:hidden;">←</button>
+  <div class="topbar-title" id="topbarTitle">Secret Side</div>
+  <button class="icon-btn" onclick="openPanel('settings')">⚙</button>
+</div>
 
-  <div class="card">
-    <div class="card-title collapsible-head" onclick="toggleTokenCard()">
-      <span>GitHub Access <span id="tokenStatus"></span></span>
-      <span class="chev" id="tokenChev">▼</span>
-    </div>
-    <div id="tokenBody">
-      <label>Personal Access Token</label>
-      <input type="password" id="ghToken" placeholder="ghp_... or github_pat_...">
-      <div class="token-note">
-        One-time setup. Create a <b>fine-grained token</b> at
-        github.com → Settings → Developer settings → Personal access tokens,
-        scoped only to these repos, with <b>Contents: Read and write</b> permission
-        and nothing else. It's saved only in this browser on this device.
-      </div>
-      <button class="btn btn-secondary" onclick="saveToken()">Save Token</button>
-      <div class="token-saved" id="tokenSavedMsg" style="display:none;">Saved on this device.</div>
-    </div>
+<div id="deployWatchList"></div>
+<div class="status" id="statusBox"></div>
+
+<!-- ═══ HOME ═══ -->
+<div class="screen active" id="screen-home">
+  <div class="section-title">Characters</div>
+  <div class="char-grid" id="charGrid"></div>
+</div>
+
+<!-- ═══ DASHBOARD ═══ -->
+<div class="screen" id="screen-dashboard">
+  <div class="dash-header">
+    <div class="dash-name" id="dashName">—</div>
+    <a class="dash-live-link" id="dashLiveLink" target="_blank" rel="noopener">Open Page ↗</a>
   </div>
 
-  <div class="card">
-    <div class="card-title">Character Pages</div>
-    <div class="hint" style="margin-top:0;">Direct links to everyone's live sheet.</div>
-    <div class="char-link-grid" id="charLinkGrid"></div>
-  </div>
-
-  <div class="sticky-head">
-    <div class="card" style="margin-bottom:10px;">
-      <div class="card-title">Send To</div>
-      <select id="charSelect" onchange="onCharChange()">
-        <option value="Secret-Side_Sanguine">Sanguine / Tre</option>
-        <option value="Secret-Side_Sloan">Sloan</option>
-        <option value="Secret-Side_Camille">Camille</option>
-        <option value="Secret-Side_Estella">Estella</option>
-        <option value="Secret-Side_Odette">Odette</option>
-        <option value="Secret-Side_Asher">Asher</option>
-        <option value="Secret-Side_FF">F.F</option>
-        <option value="Secret-Side_Meatball">Meatball (DM)</option>
-        <option value="__custom">Custom repo name…</option>
-      </select>
-      <div id="customRepoWrap" style="display:none;">
-        <label>Repo Name</label>
-        <input type="text" id="customRepo" placeholder="e.g. Secret-Side_Asher" oninput="renderEffectChips()">
-      </div>
-      <a id="viewLiveLink" href="#" target="_blank" rel="noopener" class="view-live-link">Open this character's page ↗</a>
+  <div class="dash-grid">
+    <div class="box">
+      <div class="box-head"><span>Known Info</span><button class="box-action" onclick="openPanel('adjust')">Edit</button></div>
+      <div class="box-body" id="knownInfoBody"></div>
     </div>
 
-    <div class="tab-bar">
-      <button class="tab-btn active" id="tabBtn-give"   onclick="switchTab('give')">Give / Edit</button>
-      <button class="tab-btn"        id="tabBtn-effects" onclick="switchTab('effects')">Effects</button>
-      <button class="tab-btn"        id="tabBtn-tools"  onclick="switchTab('tools')">Tools</button>
-      <button class="tab-btn"        id="tabBtn-log"    onclick="switchTab('log')">Log</button>
-    </div>
-    <div class="status" id="statusBox"></div>
-    <div id="deployWatchList"></div>
-  </div>
-
-  <!-- ═══ TAB: GIVE / EDIT ═══ -->
-  <div class="tab-panel active" id="tab-give">
-
-    <div class="card">
-      <div class="card-title">Load Template (optional)</div>
-      <select id="itemTemplate" onchange="applyAnyTemplate(this.value)">
-        <option value="">— none —</option>
-      </select>
-      <div class="hint">Fills in the fields below. You can still edit anything after.</div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Item</div>
-      <label>Name</label>
-      <input type="text" id="itName" placeholder="Item name">
-
-      <label>Type</label>
-      <div class="type-pills" id="typePills"></div>
-
-      <div class="row3">
-        <div><label>Rarity</label>
-          <select id="itRarity"><option>Common</option><option>Uncommon</option><option>Rare</option><option>Unique</option></select>
+    <div class="box">
+      <div class="box-head"><span>Status Effects</span></div>
+      <div class="box-body">
+        <input type="text" id="effectName" placeholder="Effect name">
+        <div class="effect-quicklist">
+          <button type="button" class="effect-quick-btn" onclick="$('effectName').value='Poison'">Poison</button>
+          <button type="button" class="effect-quick-btn" onclick="$('effectName').value='Burning'">Burning</button>
+          <button type="button" class="effect-quick-btn" onclick="$('effectName').value='Bleeding'">Bleeding</button>
+          <button type="button" class="effect-quick-btn" onclick="$('effectName').value='Blessed'">Blessed</button>
+          <button type="button" class="effect-quick-btn" onclick="$('effectName').value='Stunned'">Stunned</button>
         </div>
-        <div><label>Weight (lbs)</label><input type="number" id="itWeight" placeholder="0" step="0.1"></div>
-        <div><label>Qty</label><input type="number" id="itQty" placeholder="1" min="1" value="1"></div>
-      </div>
-
-      <label>Description</label>
-      <textarea id="itDesc" placeholder="What is this? Where'd it come from?"></textarea>
-
-      <label>Usage</label>
-      <div class="check-row"><input type="checkbox" id="itEquippable"><label for="itEquippable">Equippable</label></div>
-      <div class="check-row"><input type="checkbox" id="itUsable" onchange="toggleConsumable()"><label for="itUsable">Usable</label></div>
-      <div id="consumableWrap" style="display:none;">
-        <div class="row2">
-          <div class="check-row" style="margin-top:14px;"><input type="checkbox" id="itConsumable"><label for="itConsumable">Used up when used</label></div>
-          <div><label>Uses Remaining</label><input type="number" id="itUses" placeholder="1" min="0"></div>
-        </div>
-      </div>
-
-      <!-- WEAPON -->
-      <div class="type-section" id="sectionWeapon">
-        <label>Properties</label>
-        <input type="text" id="wProps" placeholder="e.g. Finesse, Light, Thrown">
-        <div class="row2">
-          <div><label>Weight Class</label>
-            <select id="wClass"><option value="">—</option><option>Light</option><option>Medium</option><option>Heavy</option><option>Thrown</option><option>Ranged</option></select>
-          </div>
-          <div class="check-row" style="margin-top:28px;"><input type="checkbox" id="wTwoHanded"><label for="wTwoHanded">Two-Handed</label></div>
-        </div>
-      </div>
-
-      <!-- ARMOR -->
-      <div class="type-section" id="sectionArmor">
-        <div class="row2">
-          <div><label>Armor Class (AC)</label><input type="text" id="aAC" placeholder="e.g. 14 + DEF (max 2)"></div>
-          <div><label>Armor Type</label>
-            <select id="aType"><option>Light</option><option>Medium</option><option>Heavy</option><option>Shield</option></select>
-          </div>
-        </div>
-        <div class="row2">
-          <div><label>Strength Requirement</label><input type="number" id="aStrReq" placeholder="0" min="0"></div>
-          <div class="check-row" style="margin-top:28px;"><input type="checkbox" id="aStealthDisadv"><label for="aStealthDisadv">Stealth Disadvantage</label></div>
-        </div>
-      </div>
-
-      <!-- AMMO -->
-      <div class="type-section" id="sectionAmmo">
-        <div class="row2">
-          <div><label>Damage</label><input type="text" id="amDamage" placeholder="e.g. 1d6"></div>
-          <div><label>Damage Type</label><input type="text" id="amDmgType" placeholder="e.g. Piercing"></div>
-        </div>
-      </div>
-
-      <!-- MEDICAL / TOOL -->
-      <div class="type-section" id="sectionMed">
-        <label>Effect</label>
-        <input type="text" id="mEffect" placeholder="e.g. Heals 2d4 HP">
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Actions</div>
-      <div id="actionsList"></div>
-      <button class="btn btn-secondary" onclick="addActionRow()">+ Add Action</button>
-    </div>
-
-    <button class="btn btn-primary" id="sendBtn" onclick="sendItem()">Send Item</button>
-
-    <div class="card">
-      <div class="card-title">Adjust Character</div>
-      <label>Field</label>
-      <select id="adjField" onchange="onAdjFieldChange()">
-        <option value="level">Level</option>
-        <option value="str">STR</option>
-        <option value="mnd">MND</option>
-        <option value="sol">SOL</option>
-        <option value="def">DEF</option>
-        <option value="hp">HP</option>
-        <option value="ac">AC Override</option>
-      </select>
-      <div class="row2">
-        <div><label id="adjValueLabel">New Value</label><input type="text" id="adjValue" placeholder="New value"></div>
-        <div id="adjHpMaxWrap" style="display:none;"><label>Max HP (optional)</label><input type="text" id="adjHpMax" placeholder="Leave blank to keep current max"></div>
-      </div>
-      <div class="hint">AC Override sets the manual override field on their sheet — same as typing a number into the AC box themselves. Leave it in mind that it replaces their derived AC entirely.</div>
-      <button class="btn btn-primary" id="adjBtn" onclick="sendStatChange()">Send Change</button>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Remove Item</div>
-      <label>Item Name</label>
-      <input type="text" id="removeName" placeholder="Exact item name">
-      <div class="hint">Matches by name, exactly (not case-sensitive). If they have two items with the same name, only one gets removed.</div>
-      <button class="btn btn-primary" id="removeBtn" onclick="sendRemoval()">Send Removal</button>
-    </div>
-  </div>
-
-  <!-- ═══ TAB: STATUS EFFECTS ═══ -->
-  <div class="tab-panel" id="tab-effects">
-    <div class="card">
-      <div class="card-title">Status Effects — DM Eyes Only</div>
-      <div class="hint" style="margin-top:0;">It stays on this device only, nothing here is ever sent to anyone's sheet.</div>
-      <div id="effectChips" class="effect-chip-row"></div>
-      <label>Add / Adjust</label>
-      <input type="text" id="effectName" placeholder="e.g. Poison, Burning, Blessed">
-      <div class="effect-quicklist">
-        <button type="button" class="effect-quick-btn" onclick="$('effectName').value='Poison'">Poison</button>
-        <button type="button" class="effect-quick-btn" onclick="$('effectName').value='Burning'">Burning</button>
-        <button type="button" class="effect-quick-btn" onclick="$('effectName').value='Bleeding'">Bleeding</button>
-        <button type="button" class="effect-quick-btn" onclick="$('effectName').value='Blessed'">Blessed</button>
-        <button type="button" class="effect-quick-btn" onclick="$('effectName').value='Stunned'">Stunned</button>
-        <button type="button" class="effect-quick-btn" onclick="$('effectName').value='Frozen'">Frozen</button>
-        <button type="button" class="effect-quick-btn" onclick="$('effectName').value='Shielded'">Shielded</button>
-        <button type="button" class="effect-quick-btn" onclick="$('effectName').value='Marked'">Marked</button>
-      </div>
-      <div class="row2">
-        <div><label>Amount</label><input type="number" id="effectAmount" placeholder="1" value="1" min="1"></div>
-        <div><label>Mode</label>
+        <div class="row2" style="margin-top:8px;">
+          <input type="number" id="effectAmount" placeholder="1" value="1" min="1">
           <select id="effectMode">
-            <option value="add">Add stacks</option>
-            <option value="remove">Remove stacks</option>
-            <option value="set">Set exact amount</option>
+            <option value="add">Add</option>
+            <option value="remove">Remove</option>
+            <option value="set">Set exact</option>
           </select>
         </div>
+        <button class="btn btn-primary" onclick="applyEffectChange()">Apply</button>
+        <div class="effect-chip-row" id="effectChipRow"></div>
       </div>
-      <button class="btn btn-primary" id="effectBtn" onclick="applyEffectChange()">Apply</button>
-      <div class="row2" style="margin-top:16px;">
-        <button class="btn btn-secondary" onclick="clearOneEffect()">Clear This Effect</button>
-        <button class="btn btn-secondary" onclick="clearAllEffectsForChar()">Clear All For This Character</button>
-      </div>
+    </div>
+
+    <div class="box">
+      <div class="box-head"><span>Items</span><button class="box-action" onclick="openGivePanel()">+ Give</button></div>
+      <div class="box-body" id="itemsBoxBody"></div>
+    </div>
+
+    <div class="box">
+      <div class="box-head"><span>Activity Log</span></div>
+      <div class="box-body" id="logBoxBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TOOLS ═══ -->
+<div class="screen" id="screen-tools">
+  <div class="card">
+    <div class="card-title">Random Target</div>
+    <div class="hint" style="margin-top:0;">Edit the list to match your actual party — it's remembered on this device.</div>
+    <textarea id="partyList" placeholder="One name per line" style="min-height:110px;"></textarea>
+    <button class="btn btn-primary" onclick="pickRandomTarget()">Pick Random</button>
+    <div class="result-box" id="randomResultBox"><div class="result-big" id="randomResultName"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Dice Roller</div>
+    <div class="dice-grid">
+      <button class="dice-btn" onclick="rollDie(4)">d4</button>
+      <button class="dice-btn" onclick="rollDie(6)">d6</button>
+      <button class="dice-btn" onclick="rollDie(8)">d8</button>
+      <button class="dice-btn" onclick="rollDie(10)">d10</button>
+      <button class="dice-btn" onclick="rollDie(12)">d12</button>
+      <button class="dice-btn" onclick="rollDie(20)">d20</button>
+      <button class="dice-btn" onclick="rollDie(100)">d100</button>
+    </div>
+    <label>Or Custom</label>
+    <div class="row2">
+      <input type="text" id="customDiceExpr" placeholder="e.g. 2d6+3">
+      <button class="btn btn-secondary" onclick="rollCustomExpr()">Roll</button>
+    </div>
+    <div class="result-box" id="diceResultBox">
+      <div class="result-big" id="diceResultNum"></div>
+      <div class="result-small" id="diceResultDetail"></div>
     </div>
   </div>
 
-  <!-- ═══ TAB: TOOLS ═══ -->
-  <div class="tab-panel" id="tab-tools">
-
-    <div class="card">
-      <div class="card-title">Random Target</div>
-      <div class="hint" style="margin-top:0;">Edit the list below to match your actual party — it's remembered on this device.</div>
-      <textarea id="partyList" placeholder="One name per line" style="min-height:110px;"></textarea>
-      <button class="btn btn-primary" onclick="pickRandomTarget()">Pick Random</button>
-      <div class="result-box" id="randomResultBox">
-        <div class="result-big" id="randomResultName"></div>
-      </div>
+  <div class="card">
+    <div class="card-title">Initiative Tracker</div>
+    <div class="hint" style="margin-top:0;">Local to this device for the current session.</div>
+    <div class="row2">
+      <input type="text" id="initName" placeholder="Name">
+      <input type="number" id="initValue" placeholder="Initiative">
     </div>
-
-    <div class="card">
-      <div class="card-title">Dice Roller</div>
-      <div class="dice-grid">
-        <button class="dice-btn" onclick="rollDie(4)">d4</button>
-        <button class="dice-btn" onclick="rollDie(6)">d6</button>
-        <button class="dice-btn" onclick="rollDie(8)">d8</button>
-        <button class="dice-btn" onclick="rollDie(10)">d10</button>
-        <button class="dice-btn" onclick="rollDie(12)">d12</button>
-        <button class="dice-btn" onclick="rollDie(20)">d20</button>
-        <button class="dice-btn" onclick="rollDie(100)">d100</button>
-      </div>
-      <label>Or Custom</label>
-      <div class="row2">
-        <input type="text" id="customDiceExpr" placeholder="e.g. 2d6+3">
-        <button class="btn btn-secondary" onclick="rollCustomExpr()">Roll</button>
-      </div>
-      <div class="result-box" id="diceResultBox">
-        <div class="result-big" id="diceResultNum"></div>
-        <div class="result-small" id="diceResultDetail"></div>
-      </div>
+    <button class="btn btn-secondary" onclick="addInitEntry()">+ Add Combatant</button>
+    <div id="initList" style="margin-top:12px;"></div>
+    <div class="row2" style="margin-top:10px;">
+      <button class="btn btn-primary" onclick="nextInitTurn()">Next Turn</button>
+      <button class="btn btn-secondary" onclick="clearInitList()">Clear All</button>
     </div>
+  </div>
+</div>
 
-    <div class="card">
-      <div class="card-title">Initiative Tracker</div>
-      <div class="hint" style="margin-top:0;">Local to this device for the current session — not synced to anyone's sheet.</div>
-      <div class="row2">
-        <input type="text" id="initName" placeholder="Name">
-        <input type="number" id="initValue" placeholder="Initiative">
-      </div>
-      <button class="btn btn-secondary" onclick="addInitEntry()">+ Add Combatant</button>
-      <div id="initList" style="margin-top:12px;"></div>
-      <div class="row2" style="margin-top:10px;">
-        <button class="btn btn-primary" onclick="nextInitTurn()">Next Turn</button>
-        <button class="btn btn-secondary" onclick="clearInitList()">Clear All</button>
-      </div>
+<div class="bottom-nav">
+  <button id="navBtn-home" class="active" onclick="goHome()"><span class="ic">🏠</span>Home</button>
+  <button id="navBtn-tools" onclick="goTools()"><span class="ic">🎲</span>Tools</button>
+  <button id="navBtn-transfer" onclick="openPanel('transfer')"><span class="ic">⇄</span>Transfer</button>
+</div>
+
+<!-- ═══ PANELS ═══ -->
+<div class="panel-overlay" id="panelOverlay" onclick="closePanel()"></div>
+
+<div class="panel" id="panel-settings">
+  <div class="panel-handle"></div>
+  <div class="panel-head"><div class="panel-title">GitHub Access <span id="tokenStatus"></span></div><button class="icon-btn" onclick="closePanel()">✕</button></div>
+  <label>Personal Access Token</label>
+  <input type="password" id="ghToken" placeholder="ghp_... or github_pat_...">
+  <div class="token-note">
+    One-time setup. Create a <b>fine-grained token</b> at github.com → Settings → Developer settings →
+    Personal access tokens, scoped only to these repos, with <b>Contents: Read and write</b> permission and
+    nothing else. It's saved only in this browser on this device.
+  </div>
+  <button class="btn btn-secondary" onclick="saveToken()">Save Token</button>
+  <div class="token-saved" id="tokenSavedMsg" style="display:none;">Saved on this device.</div>
+</div>
+
+<div class="panel" id="panel-give">
+  <div class="panel-handle"></div>
+  <div class="panel-head"><div class="panel-title">Give / Edit Item</div><button class="icon-btn" onclick="closePanel()">✕</button></div>
+  <div class="panel-target">Sending to <b id="giveTargetName">—</b></div>
+
+  <div class="card-title">Load Template (optional)</div>
+  <select id="itemTemplate" onchange="applyAnyTemplate(this.value)"><option value="">— none —</option></select>
+
+  <div class="card-title">Item</div>
+  <label>Name</label>
+  <input type="text" id="itName" placeholder="Item name">
+  <label>Type</label>
+  <div class="type-pills" id="typePills"></div>
+  <div class="row3">
+    <div><label>Rarity</label><select id="itRarity"><option>Common</option><option>Uncommon</option><option>Rare</option><option>Unique</option></select></div>
+    <div><label>Weight (lbs)</label><input type="number" id="itWeight" placeholder="0" step="0.1"></div>
+    <div><label>Qty</label><input type="number" id="itQty" placeholder="1" min="1" value="1"></div>
+  </div>
+  <label>Description</label>
+  <textarea id="itDesc" placeholder="What is this? Where'd it come from?"></textarea>
+  <label>Usage</label>
+  <div class="check-row"><input type="checkbox" id="itEquippable"><label for="itEquippable">Equippable</label></div>
+  <div class="check-row"><input type="checkbox" id="itUsable" onchange="toggleConsumable()"><label for="itUsable">Usable</label></div>
+  <div id="consumableWrap" style="display:none;">
+    <div class="row2">
+      <div class="check-row" style="margin-top:14px;"><input type="checkbox" id="itConsumable"><label for="itConsumable">Used up when used</label></div>
+      <div><label>Uses Remaining</label><input type="number" id="itUses" placeholder="1" min="0"></div>
     </div>
   </div>
 
-  <!-- ═══ TAB: LOG ═══ -->
-  <div class="tab-panel" id="tab-log">
-    <div class="card">
-      <div class="card-title">Sent Log (this device only)</div>
-      <div class="hint" style="margin-top:0;">This is a record of what <b>you've sent</b> from this device — not a live view of their sheet. They may have used, removed, or changed things themselves since.</div>
-      <div id="sentLogList" style="margin-top:10px;"></div>
+  <div class="type-section" id="sectionWeapon">
+    <label>Properties</label>
+    <input type="text" id="wProps" placeholder="e.g. Finesse, Light, Thrown">
+    <div class="row2">
+      <div><label>Weight Class</label><select id="wClass"><option value="">—</option><option>Light</option><option>Medium</option><option>Heavy</option><option>Thrown</option><option>Ranged</option></select></div>
+      <div class="check-row" style="margin-top:28px;"><input type="checkbox" id="wTwoHanded"><label for="wTwoHanded">Two-Handed</label></div>
     </div>
   </div>
+  <div class="type-section" id="sectionArmor">
+    <div class="row2">
+      <div><label>Armor Class (AC)</label><input type="text" id="aAC" placeholder="e.g. 14 + DEF (max 2)"></div>
+      <div><label>Armor Type</label><select id="aType"><option>Light</option><option>Medium</option><option>Heavy</option><option>Shield</option></select></div>
+    </div>
+    <div class="row2">
+      <div><label>Strength Requirement</label><input type="number" id="aStrReq" placeholder="0" min="0"></div>
+      <div class="check-row" style="margin-top:28px;"><input type="checkbox" id="aStealthDisadv"><label for="aStealthDisadv">Stealth Disadvantage</label></div>
+    </div>
+  </div>
+  <div class="type-section" id="sectionAmmo">
+    <div class="row2">
+      <div><label>Damage</label><input type="text" id="amDamage" placeholder="e.g. 1d6"></div>
+      <div><label>Damage Type</label><input type="text" id="amDmgType" placeholder="e.g. Piercing"></div>
+    </div>
+  </div>
+  <div class="type-section" id="sectionMed">
+    <label>Effect</label>
+    <input type="text" id="mEffect" placeholder="e.g. Heals 2d4 HP">
+  </div>
 
+  <div class="card-title">Actions</div>
+  <div id="actionsList"></div>
+  <button class="btn btn-secondary" onclick="addActionRow()">+ Add Action</button>
+
+  <button class="btn btn-primary" id="sendBtn" onclick="sendItem()">Send Item</button>
+</div>
+
+<div class="panel" id="panel-adjust">
+  <div class="panel-handle"></div>
+  <div class="panel-head"><div class="panel-title">Adjust Character</div><button class="icon-btn" onclick="closePanel()">✕</button></div>
+  <div class="panel-target">Sending to <b id="adjustTargetName">—</b></div>
+  <label>Field</label>
+  <select id="adjField" onchange="onAdjFieldChange()">
+    <option value="level">Level</option><option value="str">STR</option><option value="mnd">MND</option>
+    <option value="sol">SOL</option><option value="def">DEF</option><option value="hp">HP</option><option value="ac">AC Override</option>
+  </select>
+  <div class="row2">
+    <div><label id="adjValueLabel">New Value</label><input type="text" id="adjValue" placeholder="New value"></div>
+    <div id="adjHpMaxWrap" style="display:none;"><label>Max HP (optional)</label><input type="text" id="adjHpMax" placeholder="Leave blank to keep current max"></div>
+  </div>
+  <div class="hint">AC Override replaces their derived AC entirely, same as typing into that box on their own sheet.</div>
+  <button class="btn btn-primary" id="adjBtn" onclick="sendStatChange()">Send Change</button>
+
+  <div class="card-title">Remove an Item</div>
+  <label>Item Name</label>
+  <input type="text" id="removeName" placeholder="Exact item name">
+  <div class="hint">Matches by name, exactly (not case-sensitive).</div>
+  <button class="btn btn-primary" id="removeBtn" onclick="sendRemoval()">Send Removal</button>
+</div>
+
+<div class="panel" id="panel-transfer">
+  <div class="panel-handle"></div>
+  <div class="panel-head"><div class="panel-title">Transfer Item</div><button class="icon-btn" onclick="closePanel()">✕</button></div>
+  <div class="hint" style="margin-top:0;">Removes the item from Source and gives it to Destination — both happen together.</div>
+
+  <label>From (Source)</label>
+  <select id="transferSource" onchange="onTransferSourceChange()"></select>
+
+  <label>Item</label>
+  <select id="transferItemPick" onchange="onTransferItemPick()"></select>
+  <div id="transferManualWrap" style="display:none;">
+    <label>Item Name</label>
+    <input type="text" id="transferManualName" placeholder="Type the item's name">
+    <div class="hint">Not in their sent history — this sends a bare-bones item with just this name. Edit it fully afterward from the destination's Items box if needed.</div>
+  </div>
+
+  <label>To (Destination)</label>
+  <select id="transferDest"></select>
+
+  <button class="btn btn-primary" id="transferBtn" onclick="doTransfer()">Transfer Item</button>
 </div>
 
 <script>
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s).replace(/"/g,'&quot;'); }
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
 var GH_OWNER = 'temmiemanz';
 var CHARACTERS = [
-  { repo: 'Secret-Side_Sanguine', name: 'Sanguine / Tre' },
-  { repo: 'Secret-Side_Sloan',    name: 'Sloan' },
-  { repo: 'Secret-Side_Camille',  name: 'Camille' },
-  { repo: 'Secret-Side_Estella',  name: 'Estella' },
-  { repo: 'Secret-Side_Odette',   name: 'Odette' },
-  { repo: 'Secret-Side_Asher',    name: 'Asher' },
-  { repo: 'Secret-Side_FF',       name: "F.F" },
-  { repo: 'Secret-Side_Meatball', name: 'Meatball (DM)' }
+  { repo: 'Secret-Side_Sanguine', name: 'Sanguine / Tre',   color: '#c8182a' },
+  { repo: 'Secret-Side_Sloan',    name: 'Sloan',             color: '#9b6dda' },
+  { repo: 'Secret-Side_Camille',  name: 'Camille',           color: '#7db87a' },
+  { repo: 'Secret-Side_Estella',  name: 'Estella',           color: '#f5d000' },
+  { repo: 'Secret-Side_Odette',   name: 'Odette',            color: '#00c9b1' },
+  { repo: 'Secret-Side_Asher',    name: 'Asher',             color: '#2ef0e8' },
+  { repo: 'Secret-Side_FF',       name: "Mike's Character",  color: '#b8302a' },
+  { repo: 'Secret-Side_Meatball', name: 'Meatball (DM)',     color: '#d84838' }
 ];
-function charDisplayName(repo) {
-  var found = CHARACTERS.find(function(c){ return c.repo === repo; });
-  return found ? found.name : repo;
+function charByRepo(repo) { return CHARACTERS.find(function(c){ return c.repo === repo; }); }
+function charDisplayName(repo) { var c = charByRepo(repo); return c ? c.name : repo; }
+function liveUrlFor(repo) { return 'https://' + GH_OWNER + '.github.io/' + repo + '/'; }
+
+var currentRepo = null; // the character whose dashboard is open
+
+// ── NAVIGATION ──
+function showScreen(name) {
+  ['home','dashboard','tools'].forEach(function(s) { $('screen-'+s).classList.toggle('active', s === name); });
+  ['home','tools'].forEach(function(s) { $('navBtn-'+s).classList.toggle('active', s === name); });
+  $('backBtn').style.visibility = name === 'dashboard' ? 'visible' : 'hidden';
+  $('topbarTitle').textContent = name === 'dashboard' ? charDisplayName(currentRepo) : 'Secret Side';
 }
-function liveUrlFor(repo) {
-  return 'https://' + GH_OWNER + '.github.io/' + repo + '/';
+function goHome() { currentRepo = null; showScreen('home'); renderCharGrid(); }
+function goTools() { showScreen('tools'); }
+function openDashboard(repo) {
+  currentRepo = repo;
+  showScreen('dashboard');
+  renderDashboard();
 }
-function renderCharLinks() {
-  var wrap = $('charLinkGrid');
-  if (!wrap) return;
+
+// ── PANELS (bottom sheets) ──
+function openPanel(name) {
+  $('panelOverlay').classList.add('show');
+  $('panel-'+name).classList.add('open');
+  if (name === 'give') prepGivePanel();
+  if (name === 'adjust') $('adjustTargetName').textContent = charDisplayName(currentRepo);
+  if (name === 'transfer') prepTransferPanel();
+}
+function closePanel() {
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('open'); });
+  $('panelOverlay').classList.remove('show');
+}
+function openGivePanel() { openPanel('give'); }
+
+// ── HOME: character grid ──
+function renderCharGrid() {
+  var wrap = $('charGrid');
+  var effects = getEffectsStore();
+  var log = getSentLog();
   wrap.innerHTML = CHARACTERS.map(function(c) {
-    return '<a class="char-link" href="' + liveUrlFor(c.repo) + '" target="_blank" rel="noopener">' + esc(c.name) + ' ↗</a>';
+    var effCount = effects[c.repo] ? Object.keys(effects[c.repo]).filter(function(k){return effects[c.repo][k]>0;}).length : 0;
+    var lastEntry = (log[c.repo] || [])[0];
+    var sub = effCount ? (effCount + ' active effect' + (effCount>1?'s':'')) : (lastEntry ? 'Last: ' + lastEntry.desc : 'No activity yet');
+    return '<div class="char-card" style="--card-color:' + c.color + '" onclick="openDashboard(\'' + c.repo + '\')">' +
+      '<div><div class="char-card-name">' + escHtml(c.name) + '</div><div class="char-card-sub">' + escHtml(sub) + '</div></div>' +
+      '<a class="char-card-link" href="' + liveUrlFor(c.repo) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="--card-color:' + c.color + '">↗</a>' +
+    '</div>';
   }).join('');
 }
 
+// ── DASHBOARD ──
+function renderDashboard() {
+  var c = charByRepo(currentRepo);
+  document.documentElement.style.setProperty('--char-color', c ? c.color : '#c8a84b');
+  $('dashName').textContent = c ? c.name : currentRepo;
+  $('dashLiveLink').href = liveUrlFor(currentRepo);
+  renderKnownInfo();
+  renderEffectChips();
+  renderItemsBox();
+  renderLogBox();
+}
+
+// ── KNOWN INFO (DM's own record, updated automatically whenever a stat change is sent) ──
+function getKnownInfo(repo) {
+  var store; try { store = JSON.parse(localStorage.getItem('secret_side_known_info')) || {}; } catch(e) { store = {}; }
+  return store[repo] || {};
+}
+function setKnownInfo(repo, field, value) {
+  var store; try { store = JSON.parse(localStorage.getItem('secret_side_known_info')) || {}; } catch(e) { store = {}; }
+  if (!store[repo]) store[repo] = {};
+  store[repo][field] = value;
+  try { localStorage.setItem('secret_side_known_info', JSON.stringify(store)); } catch(e) {}
+}
+function renderKnownInfo() {
+  var info = getKnownInfo(currentRepo);
+  var fields = [['level','Level'],['str','STR'],['mnd','MND'],['sol','SOL'],['def','DEF'],['hp','HP'],['ac','AC Override']];
+  var any = fields.some(function(f){ return info[f[0]] !== undefined; });
+  if (!any) { $('knownInfoBody').innerHTML = '<div class="box-empty">Nothing sent yet — use Edit to set stats, level, or HP.</div>'; return; }
+  $('knownInfoBody').innerHTML = '<div class="known-grid">' + fields.map(function(f) {
+    if (info[f[0]] === undefined) return '';
+    return '<div class="known-stat"><span class="known-stat-label">' + f[1] + '</span><span class="known-stat-val">' + escHtml(String(info[f[0]])) + '</span></div>';
+  }).join('') + '</div>';
+}
+
+// ── ITEMS BOX (derived from sent-item history) ──
+function getSentLog() {
+  var log; try { log = JSON.parse(localStorage.getItem('secret_side_sent_log')) || {}; } catch(e) { log = {}; }
+  return log;
+}
+function getItemHistory(repo) {
+  var log = getSentLog();
+  var entries = log[repo] || [];
+  var out = [];
+  entries.forEach(function(e, i) { if (e.item) out.push({ index: i, entry: e }); });
+  return out;
+}
+function renderItemsBox() {
+  var items = getItemHistory(currentRepo);
+  if (!items.length) { $('itemsBoxBody').innerHTML = '<div class="box-empty">Nothing given yet.</div>'; return; }
+  $('itemsBoxBody').innerHTML = items.map(function(x) {
+    var it = x.entry.item;
+    return '<div class="item-row"><div class="item-row-main"><div class="item-row-name">' + escHtml(it.name) + '</div><div class="item-row-type">' + escHtml(it.type || '') + '</div></div>' +
+      '<div class="item-row-actions">' +
+        '<button class="mini-btn" onclick="editLoggedItem(\'' + currentRepo + '\',' + x.index + ')">Edit</button>' +
+        '<button class="mini-btn" onclick="startTransferFromItem(\'' + currentRepo + '\',' + x.index + ')">Transfer</button>' +
+      '</div></div>';
+  }).join('');
+}
+
+// ── LOG BOX (full chronological record) ──
+function renderLogBox() {
+  var log = getSentLog();
+  var entries = log[currentRepo] || [];
+  if (!entries.length) { $('logBoxBody').innerHTML = '<div class="box-empty">Nothing sent to this character yet.</div>'; return; }
+  $('logBoxBody').innerHTML = entries.map(function(e) {
+    return '<div class="log-row"><div class="log-desc">' + escHtml(e.desc) + '</div><div class="log-time">' + escHtml(e.at) + '</div></div>';
+  }).join('');
+}
+function logSent(repo, desc, item) {
+  var log = getSentLog();
+  if (!log[repo]) log[repo] = [];
+  var entry = { desc: desc, at: new Date().toLocaleString() };
+  if (item) entry.item = item;
+  log[repo].unshift(entry);
+  log[repo] = log[repo].slice(0, 40);
+  try { localStorage.setItem('secret_side_sent_log', JSON.stringify(log)); } catch(e) {}
+  if (repo === currentRepo) { renderItemsBox(); renderLogBox(); }
+}
+
+// ── STATUS EFFECTS — DM eyes only, fully local, per character ──
+function getEffectsStore() {
+  var store; try { store = JSON.parse(localStorage.getItem('secret_side_dm_effects')) || {}; } catch(e) { store = {}; }
+  return store;
+}
+function saveEffectsStore(store) { try { localStorage.setItem('secret_side_dm_effects', JSON.stringify(store)); } catch(e) {} }
+function renderEffectChips() {
+  var store = getEffectsStore();
+  var effects = store[currentRepo] || {};
+  var names = Object.keys(effects).filter(function(n){ return effects[n] > 0; });
+  var wrap = $('effectChipRow');
+  if (!names.length) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = names.map(function(name) {
+    var safe = name.replace(/'/g, "\\'");
+    return '<div class="effect-chip"><span class="effect-chip-name">' + escHtml(name) + '</span>' +
+      '<span class="effect-chip-count">&times;' + effects[name] + '</span>' +
+      '<button class="effect-chip-btn" onclick="adjustEffect(\'' + safe + '\',-1)">&minus;</button>' +
+      '<button class="effect-chip-btn" onclick="adjustEffect(\'' + safe + '\',1)">+</button>' +
+      '<button class="effect-chip-btn" onclick="removeEffect(\'' + safe + '\')">&times;</button></div>';
+  }).join('');
+}
+function adjustEffect(name, delta) {
+  var store = getEffectsStore();
+  if (!store[currentRepo]) store[currentRepo] = {};
+  store[currentRepo][name] = (store[currentRepo][name] || 0) + delta;
+  if (store[currentRepo][name] <= 0) delete store[currentRepo][name];
+  saveEffectsStore(store); renderEffectChips();
+}
+function removeEffect(name) {
+  var store = getEffectsStore();
+  if (store[currentRepo]) delete store[currentRepo][name];
+  saveEffectsStore(store); renderEffectChips();
+}
+function applyEffectChange() {
+  var name = $('effectName').value.trim();
+  if (!name) return;
+  var amt = parseInt($('effectAmount').value) || 1;
+  var mode = $('effectMode').value;
+  var store = getEffectsStore();
+  if (!store[currentRepo]) store[currentRepo] = {};
+  if (mode === 'add') store[currentRepo][name] = (store[currentRepo][name] || 0) + amt;
+  else if (mode === 'remove') store[currentRepo][name] = (store[currentRepo][name] || 0) - amt;
+  else store[currentRepo][name] = amt;
+  if (store[currentRepo][name] <= 0) delete store[currentRepo][name];
+  saveEffectsStore(store);
+  $('effectName').value = '';
+  renderEffectChips();
+  renderCharGrid();
+}
+
+/* ══════════════ TEMPLATES ══════════════ */
 var TYPES = ['Weapon','Armor','Ammo','Medical','Tool','Valuable','Junk','Other'];
 var selectedType = 'Weapon';
 
@@ -584,7 +772,6 @@ var WEAPON_TEMPLATES = {
   "Landmine":          { tier:"Advanced", dmg:"4d8",  type:"Solid",       range:"5 ft",       props:"Special",                      wclass:"Heavy",   weight:3,
                          notes:"Placed and hidden. Triggers on pressure, not thrown or fired." }
 };
-
 var ARMOR_TEMPLATES = {
   "Padded Jacket":   { ac:"11 + DEF",              armorType:"Light",  strReq:"", stealthDisadv:false, weight:5  },
   "Leather Armor":   { ac:"11 + DEF",              armorType:"Light",  strReq:"", stealthDisadv:false, weight:10 },
@@ -602,7 +789,6 @@ var ARMOR_TEMPLATES = {
                        desc:"Welded and strapped together from whatever metal was lying around. Ugly. Works." },
   "Riot Shield":     { ac:"+2",                    armorType:"Shield", strReq:"", stealthDisadv:false, weight:6 }
 };
-
 var MEDICAL_TEMPLATES = {
   "Bandage":         { effect:"Stops bleeding. Heals 1d4 HP.",                                     uses:1, weight:0.2 },
   "Field Dressing":  { effect:"Heals 1d6 HP and clears one bleeding condition.",                    uses:1, weight:0.5 },
@@ -618,7 +804,6 @@ var MEDICAL_TEMPLATES = {
   "Purified Water":  { effect:"Satisfies a day's thirst. Safe to drink, no questions asked.",        uses:1, weight:1   },
   "Energy Drink":    { effect:"Advantage on the next Fortitude or Focus roll made within the hour.", uses:1, weight:0.5 }
 };
-
 var AMMO_TEMPLATES = {
   "9mm Rounds (x12)":       { weight:0.5, qty:12, dmg:"", dmgType:"" },
   "Rifle Rounds (x20)":     { weight:1,   qty:20, dmg:"", dmgType:"" },
@@ -627,7 +812,6 @@ var AMMO_TEMPLATES = {
   "Crossbow Bolts (x10)":   { weight:1.5, qty:10, dmg:"", dmgType:"" },
   "Sling Bullets (x10)":    { weight:1.5, qty:10, dmg:"", dmgType:"" }
 };
-
 var TOOL_TEMPLATES = {
   "Rope (50 ft)":     { weight:10, desc:"" },
   "Flashlight":       { weight:1,  desc:"" },
@@ -639,22 +823,18 @@ var TOOL_TEMPLATES = {
   "Water Filter":     { weight:1,  desc:"" },
   "Crowbar (Tool)":   { weight:5,  desc:"For prying, not fighting. Though it'll do that too." }
 };
-
 var VALUABLE_TEMPLATES = {
   "Gold Coins (handful)": { weight:0.5, stackable:true, desc:"" },
   "Jewelry":              { weight:0.1, desc:"" },
   "Gemstone":             { weight:0.1, desc:"" },
   "Pre-War Currency":     { weight:0.1, desc:"Worthless as money now. Some people still collect it." }
 };
-
 var JUNK_TEMPLATES = {
   "Scrap Metal":          { weight:2,   desc:"" },
   "Broken Electronics":   { weight:1,   desc:"Might be worth something to the right person. Might not." },
   "Empty Bottle":         { weight:0.5, desc:"" },
   "Rusty Nails (handful)":{ weight:0.5, desc:"" }
 };
-
-function $(id) { return document.getElementById(id); }
 
 function buildTypePills() {
   var wrap = $('typePills'); wrap.innerHTML = '';
@@ -677,26 +857,20 @@ function showTypeSection() {
   $('itConsumable').checked = (selectedType === 'Medical' || selectedType === 'Tool');
   toggleConsumable();
 }
-function toggleConsumable() {
-  $('consumableWrap').style.display = $('itUsable').checked ? 'block' : 'none';
-}
+function toggleConsumable() { $('consumableWrap').style.display = $('itUsable').checked ? 'block' : 'none'; }
 
 function populateTemplates() {
   var sel = $('itemTemplate');
   function addGroup(label, dict, prefix) {
     var g = document.createElement('optgroup'); g.label = label;
     Object.keys(dict).forEach(function(name) {
-      var o = document.createElement('option');
-      o.value = prefix + '::' + name;
-      o.textContent = name;
+      var o = document.createElement('option'); o.value = prefix + '::' + name; o.textContent = name;
       g.appendChild(o);
     });
     sel.appendChild(g);
   }
   var basic = {}, advanced = {};
-  Object.keys(WEAPON_TEMPLATES).forEach(function(name) {
-    (WEAPON_TEMPLATES[name].tier === 'Advanced' ? advanced : basic)[name] = WEAPON_TEMPLATES[name];
-  });
+  Object.keys(WEAPON_TEMPLATES).forEach(function(name) { (WEAPON_TEMPLATES[name].tier === 'Advanced' ? advanced : basic)[name] = WEAPON_TEMPLATES[name]; });
   addGroup('Weapons — Basic', basic, 'weapon');
   addGroup('Weapons — Advanced', advanced, 'weapon');
   addGroup('Armor', ARMOR_TEMPLATES, 'armor');
@@ -706,79 +880,53 @@ function populateTemplates() {
   addGroup('Valuables', VALUABLE_TEMPLATES, 'valuable');
   addGroup('Junk', JUNK_TEMPLATES, 'junk');
 }
-
 function applyAnyTemplate(key) {
   if (!key) return;
-  var parts = key.split('::');
-  var cat = parts[0], name = parts[1];
-
+  var parts = key.split('::'); var cat = parts[0], name = parts[1];
   if (cat === 'weapon') {
     var t = WEAPON_TEMPLATES[name];
     if (!$('itName').value.trim()) $('itName').value = name;
     selectedType = 'Weapon'; buildTypePills(); showTypeSection();
-    $('itWeight').value = t.weight;
-    $('wProps').value = t.props;
-    $('wClass').value = t.wclass;
+    $('itWeight').value = t.weight; $('wProps').value = t.props; $('wClass').value = t.wclass;
     $('wTwoHanded').checked = /two-handed/i.test(t.props);
     $('actionsList').innerHTML = '';
     addActionRow({ name: name, damage: t.dmg, dmgType: t.type, range: t.range, damage2: t.dmg2||'', dmgType2: t.type2||'', notes: t.notes||'' });
-  }
-  else if (cat === 'armor') {
+  } else if (cat === 'armor') {
     var a = ARMOR_TEMPLATES[name];
     if (!$('itName').value.trim()) $('itName').value = name;
     selectedType = 'Armor'; buildTypePills(); showTypeSection();
-    $('itWeight').value = a.weight;
-    if (a.desc) $('itDesc').value = a.desc;
-    $('aAC').value = a.ac;
-    $('aType').value = a.armorType;
-    $('aStrReq').value = a.strReq;
-    $('aStealthDisadv').checked = a.stealthDisadv;
-  }
-  else if (cat === 'medical') {
+    $('itWeight').value = a.weight; if (a.desc) $('itDesc').value = a.desc;
+    $('aAC').value = a.ac; $('aType').value = a.armorType; $('aStrReq').value = a.strReq; $('aStealthDisadv').checked = a.stealthDisadv;
+  } else if (cat === 'medical') {
     var m = MEDICAL_TEMPLATES[name];
     if (!$('itName').value.trim()) $('itName').value = name;
     selectedType = 'Medical'; buildTypePills(); showTypeSection();
-    $('itWeight').value = m.weight;
-    $('itUsable').checked = true; $('itConsumable').checked = true; toggleConsumable();
-    $('itUses').value = m.uses;
-    $('mEffect').value = m.effect;
-  }
-  else if (cat === 'ammo') {
+    $('itWeight').value = m.weight; $('itUsable').checked = true; $('itConsumable').checked = true; toggleConsumable();
+    $('itUses').value = m.uses; $('mEffect').value = m.effect;
+  } else if (cat === 'ammo') {
     var am = AMMO_TEMPLATES[name];
     if (!$('itName').value.trim()) $('itName').value = name;
     selectedType = 'Ammo'; buildTypePills(); showTypeSection();
-    $('itWeight').value = am.weight;
-    $('itQty').value = am.qty;
-    $('amDamage').value = am.dmg;
-    $('amDmgType').value = am.dmgType;
-  }
-  else if (cat === 'tool') {
-    var tl = TOOL_TEMPLATES[name];
-    var cleanName = name.replace(' (Tool)', '');
+    $('itWeight').value = am.weight; $('itQty').value = am.qty; $('amDamage').value = am.dmg; $('amDmgType').value = am.dmgType;
+  } else if (cat === 'tool') {
+    var tl = TOOL_TEMPLATES[name]; var cleanName = name.replace(' (Tool)', '');
     if (!$('itName').value.trim()) $('itName').value = cleanName;
     selectedType = 'Tool'; buildTypePills(); showTypeSection();
-    $('itWeight').value = tl.weight;
-    if (tl.desc) $('itDesc').value = tl.desc;
-  }
-  else if (cat === 'valuable') {
+    $('itWeight').value = tl.weight; if (tl.desc) $('itDesc').value = tl.desc;
+  } else if (cat === 'valuable') {
     var v = VALUABLE_TEMPLATES[name];
     if (!$('itName').value.trim()) $('itName').value = name;
     selectedType = 'Valuable'; buildTypePills(); showTypeSection();
-    $('itWeight').value = v.weight;
-    if (v.desc) $('itDesc').value = v.desc;
+    $('itWeight').value = v.weight; if (v.desc) $('itDesc').value = v.desc;
     if (v.stackable) $('itQty').value = $('itQty').value || 1;
-  }
-  else if (cat === 'junk') {
+  } else if (cat === 'junk') {
     var j = JUNK_TEMPLATES[name];
     if (!$('itName').value.trim()) $('itName').value = name;
     selectedType = 'Junk'; buildTypePills(); showTypeSection();
-    $('itWeight').value = j.weight;
-    if (j.desc) $('itDesc').value = j.desc;
+    $('itWeight').value = j.weight; if (j.desc) $('itDesc').value = j.desc;
   }
-
   $('itemTemplate').value = '';
 }
-
 function addActionRow(data) {
   data = data || {};
   var row = document.createElement('div');
@@ -799,224 +947,94 @@ function addActionRow(data) {
     '<label>Notes</label><input type="text" class="a-notes" placeholder="Additional notes..." value="'+esc(data.notes||'')+'">';
   $('actionsList').appendChild(row);
 }
-function esc(s) { return String(s).replace(/"/g,'&quot;'); }
-
-function toggleTokenCard() {
-  var body = $('tokenBody'), chev = $('tokenChev');
-  var open = body.style.display !== 'none';
-  body.style.display = open ? 'none' : 'block';
-  chev.classList.toggle('open', !open);
-}
-function saveToken() {
-  var t = $('ghToken').value.trim();
-  if (!t) return;
-  localStorage.setItem('secret_side_sender_token', t);
-  $('tokenSavedMsg').style.display = 'block';
-  updateTokenStatus();
-}
-function updateTokenStatus() {
-  var t = localStorage.getItem('secret_side_sender_token');
-  $('tokenStatus').textContent = t ? '(saved)' : '(not set)';
-}
-
-function onCharChange() {
-  $('customRepoWrap').style.display = $('charSelect').value === '__custom' ? 'block' : 'none';
-  renderSentLog();
-  renderEffectChips();
-  var repo = getRepo();
-  var link = $('viewLiveLink');
-  if (link) { link.href = repo ? liveUrlFor(repo) : '#'; link.style.display = repo ? 'block' : 'none'; }
-}
-
-function getRepo() {
-  var v = $('charSelect').value;
-  return v === '__custom' ? $('customRepo').value.trim() : v;
-}
-
-function b64EncodeUnicode(str) {
-  return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(m, p1) {
-    return String.fromCharCode('0x' + p1);
-  }));
-}
-function b64DecodeUnicode(str) {
-  return decodeURIComponent(atob(str).split('').map(function(c) {
-    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-  }).join(''));
-}
-
 function buildItem() {
   var actions = [];
   document.querySelectorAll('#actionsList .action-row').forEach(function(row) {
     var name = row.querySelector('.a-name').value.trim();
     if (!name) return;
     actions.push({
-      name: name,
-      damage: row.querySelector('.a-dmg').value.trim(),
-      dmgType: row.querySelector('.a-type').value.trim(),
-      range: row.querySelector('.a-range').value.trim(),
-      damage2: row.querySelector('.a-dmg2').value.trim(),
-      dmgType2: row.querySelector('.a-type2').value.trim(),
-      notes: row.querySelector('.a-notes').value.trim()
+      name: name, damage: row.querySelector('.a-dmg').value.trim(), dmgType: row.querySelector('.a-type').value.trim(),
+      range: row.querySelector('.a-range').value.trim(), damage2: row.querySelector('.a-dmg2').value.trim(),
+      dmgType2: row.querySelector('.a-type2').value.trim(), notes: row.querySelector('.a-notes').value.trim()
     });
   });
-
   var item = {
     mailId: 'm' + Date.now() + Math.floor(Math.random() * 10000),
-    name: $('itName').value.trim(),
-    type: selectedType,
-    rarity: $('itRarity').value,
-    value: '',
-    weight: $('itWeight').value || '0',
-    qty: parseInt($('itQty').value) || 1,
-    stackable: false,
-    desc: $('itDesc').value,
-    notes: '',
-    equippable: $('itEquippable').checked,
-    usable: $('itUsable').checked,
-    consumable: $('itConsumable').checked,
-    uses: $('itUses').value,
-    props: '', weaponWt: '', twoHanded: false,
-    ac: '', armorType: 'Light', strReq: '', stealthDisadv: false,
-    ammoDamage: '', ammoDmgType: '',
-    effect: '',
-    fx: { str:'', mnd:'', sol:'', def:'' },
-    conditions: [], customFields: [],
-    actions: actions
+    name: $('itName').value.trim(), type: selectedType, rarity: $('itRarity').value, value: '',
+    weight: $('itWeight').value || '0', qty: parseInt($('itQty').value) || 1, stackable: false,
+    desc: $('itDesc').value, notes: '', equippable: $('itEquippable').checked, usable: $('itUsable').checked,
+    consumable: $('itConsumable').checked, uses: $('itUses').value,
+    props: '', weaponWt: '', twoHanded: false, ac: '', armorType: 'Light', strReq: '', stealthDisadv: false,
+    ammoDamage: '', ammoDmgType: '', effect: '', fx: { str:'', mnd:'', sol:'', def:'' }, conditions: [], customFields: [], actions: actions
   };
-
-  if (selectedType === 'Weapon') {
-    item.props = $('wProps').value;
-    item.weaponWt = $('wClass').value;
-    item.twoHanded = $('wTwoHanded').checked;
-  }
-  if (selectedType === 'Armor') {
-    item.ac = $('aAC').value;
-    item.armorType = $('aType').value;
-    item.strReq = $('aStrReq').value;
-    item.stealthDisadv = $('aStealthDisadv').checked;
-  }
-  if (selectedType === 'Ammo') {
-    item.ammoDamage = $('amDamage').value;
-    item.ammoDmgType = $('amDmgType').value;
-  }
-  if (selectedType === 'Medical' || selectedType === 'Tool') {
-    item.effect = $('mEffect').value;
-  }
+  if (selectedType === 'Weapon') { item.props = $('wProps').value; item.weaponWt = $('wClass').value; item.twoHanded = $('wTwoHanded').checked; }
+  if (selectedType === 'Armor')  { item.ac = $('aAC').value; item.armorType = $('aType').value; item.strReq = $('aStrReq').value; item.stealthDisadv = $('aStealthDisadv').checked; }
+  if (selectedType === 'Ammo')   { item.ammoDamage = $('amDamage').value; item.ammoDmgType = $('amDmgType').value; }
+  if (selectedType === 'Medical' || selectedType === 'Tool') { item.effect = $('mEffect').value; }
   return item;
 }
-
-function setStatus(msg, kind) {
-  var box = $('statusBox');
-  box.className = 'status show ' + kind;
-  box.textContent = msg;
-}
-
-function logSent(repo, desc, item) {
-  var key = 'secret_side_sent_log';
-  var log; try { log = JSON.parse(localStorage.getItem(key)) || {}; } catch(e) { log = {}; }
-  if (!log[repo]) log[repo] = [];
-  var entry = { desc: desc, at: new Date().toLocaleString() };
-  if (item) entry.item = item;
-  log[repo].unshift(entry);
-  log[repo] = log[repo].slice(0, 30);
-  try { localStorage.setItem(key, JSON.stringify(log)); } catch(e) {}
-  renderSentLog();
-}
-function renderSentLog() {
-  var repo = getRepo();
-  var wrap = $('sentLogList');
-  if (!repo) { wrap.innerHTML = '<div class="hint">Pick a character to see its log.</div>'; return; }
-  var log; try { log = JSON.parse(localStorage.getItem('secret_side_sent_log')) || {}; } catch(e) { log = {}; }
-  var entries = log[repo] || [];
-  if (!entries.length) { wrap.innerHTML = '<div class="hint">Nothing sent to this character yet from this device.</div>'; return; }
-  wrap.innerHTML = entries.map(function(e, i) {
-    var editBtn = e.item ? '<button class="log-edit-btn" onclick="editLoggedItem(\'' + repo.replace(/'/g,"\\'") + '\',' + i + ')">Edit</button>' : '';
-    return '<div class="log-row"><div><div class="log-desc">' + esc(e.desc) + '</div><div class="log-time">' + esc(e.at) + '</div></div>' + editBtn + '</div>';
-  }).join('');
-}
-
-function editLoggedItem(repo, index) {
-  var log; try { log = JSON.parse(localStorage.getItem('secret_side_sent_log')) || {}; } catch(e) { log = {}; }
-  var entry = (log[repo] || [])[index];
-  if (!entry || !entry.item) return;
-  loadItemIntoForm(entry.item);
-  editingOriginalName = entry.item.name;
-  updateEditBanner();
-  window.scrollTo({ top: $('itName').closest('.card').offsetTop - 12, behavior: 'smooth' });
-}
-
 function loadItemIntoForm(item) {
   $('itName').value = item.name || '';
   selectedType = item.type || 'Weapon'; buildTypePills(); showTypeSection();
   $('itRarity').value = item.rarity || 'Common';
-  $('itWeight').value = item.weight || '';
-  $('itQty').value = item.qty || 1;
-  $('itDesc').value = item.desc || '';
-  $('itEquippable').checked = !!item.equippable;
-  $('itUsable').checked = !!item.usable;
-  toggleConsumable();
-  $('itConsumable').checked = !!item.consumable;
-  $('itUses').value = item.uses || '';
-  if (selectedType === 'Weapon') {
-    $('wProps').value = item.props || '';
-    $('wClass').value = item.weaponWt || '';
-    $('wTwoHanded').checked = !!item.twoHanded;
-  }
-  if (selectedType === 'Armor') {
-    $('aAC').value = item.ac || '';
-    $('aType').value = item.armorType || 'Light';
-    $('aStrReq').value = item.strReq || '';
-    $('aStealthDisadv').checked = !!item.stealthDisadv;
-  }
-  if (selectedType === 'Ammo') {
-    $('amDamage').value = item.ammoDamage || '';
-    $('amDmgType').value = item.ammoDmgType || '';
-  }
-  if (selectedType === 'Medical' || selectedType === 'Tool') {
-    $('mEffect').value = item.effect || '';
-  }
+  $('itWeight').value = item.weight || ''; $('itQty').value = item.qty || 1; $('itDesc').value = item.desc || '';
+  $('itEquippable').checked = !!item.equippable; $('itUsable').checked = !!item.usable;
+  toggleConsumable(); $('itConsumable').checked = !!item.consumable; $('itUses').value = item.uses || '';
+  if (selectedType === 'Weapon') { $('wProps').value = item.props || ''; $('wClass').value = item.weaponWt || ''; $('wTwoHanded').checked = !!item.twoHanded; }
+  if (selectedType === 'Armor')  { $('aAC').value = item.ac || ''; $('aType').value = item.armorType || 'Light'; $('aStrReq').value = item.strReq || ''; $('aStealthDisadv').checked = !!item.stealthDisadv; }
+  if (selectedType === 'Ammo')   { $('amDamage').value = item.ammoDamage || ''; $('amDmgType').value = item.ammoDmgType || ''; }
+  if (selectedType === 'Medical' || selectedType === 'Tool') { $('mEffect').value = item.effect || ''; }
   $('actionsList').innerHTML = '';
   (item.actions || []).forEach(function(a) { addActionRow(a); });
   if (!item.actions || !item.actions.length) addActionRow();
 }
 
 var editingOriginalName = null;
-function updateEditBanner() {
-  var existing = $('editBanner');
-  if (existing) existing.remove();
+function prepGivePanel() {
+  $('giveTargetName').textContent = charDisplayName(currentRepo);
   if (!editingOriginalName) {
-    $('sendBtn').textContent = 'Send Item';
-    return;
+    $('itName').value = ''; $('itDesc').value = ''; $('itWeight').value = ''; $('itQty').value = 1;
+    $('itRarity').value = 'Common'; $('itUses').value = ''; selectedType = 'Weapon';
+    buildTypePills(); showTypeSection();
+    $('actionsList').innerHTML = ''; addActionRow();
   }
-  $('sendBtn').textContent = 'Update "' + editingOriginalName + '"';
-  var banner = document.createElement('div');
-  banner.id = 'editBanner';
-  banner.className = 'edit-banner';
-  banner.innerHTML = 'Editing <b>' + esc(editingOriginalName) + '</b> — this will replace that item on their sheet (matched by name), not add a new one. ' +
-    '<button type="button" onclick="cancelEdit()">Cancel, add new instead</button>';
-  $('itName').closest('.card').insertAdjacentElement('beforebegin', banner);
-}
-function cancelEdit() {
-  editingOriginalName = null;
   updateEditBanner();
 }
+function updateEditBanner() {
+  var existing = $('editBanner'); if (existing) existing.remove();
+  if (!editingOriginalName) { $('sendBtn').textContent = 'Send Item'; return; }
+  $('sendBtn').textContent = 'Update "' + editingOriginalName + '"';
+  var banner = document.createElement('div');
+  banner.id = 'editBanner'; banner.className = 'edit-banner';
+  banner.innerHTML = 'Editing <b>' + escHtml(editingOriginalName) + '</b> — this replaces that item (matched by name), not add a new one. ' +
+    '<button type="button" onclick="cancelEdit()">Cancel, add new instead</button>';
+  document.querySelector('#panel-give .card-title').insertAdjacentElement('beforebegin', banner);
+}
+function cancelEdit() { editingOriginalName = null; updateEditBanner(); }
+function editLoggedItem(repo, index) {
+  var log = getSentLog();
+  var entry = (log[repo] || [])[index];
+  if (!entry || !entry.item) return;
+  currentRepo = repo;
+  loadItemIntoForm(entry.item);
+  editingOriginalName = entry.item.name;
+  openPanel('give');
+}
 
-// Generic mailbox writer — GET current file, let `mutate` push the new
-// entry into the right array, PUT it back. Used for items, stat/level/HP/AC
-// changes, and item removals alike.
-function sendToMailbox(mutateFn, btn, successMsg, logDesc, itemForLog) {
+/* ══════════════ MAILBOX WRITER + DEPLOY WATCH ══════════════ */
+function b64EncodeUnicode(str) { return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(m, p1) { return String.fromCharCode('0x' + p1); })); }
+function b64DecodeUnicode(str) { return decodeURIComponent(atob(str).split('').map(function(c) { return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2); }).join('')); }
+
+function setStatus(msg, kind) { var box = $('statusBox'); box.className = 'status show ' + kind; box.textContent = msg; }
+
+function sendToMailbox(repo, mutateFn, btn, successMsg, logDesc, itemForLog) {
   var token = localStorage.getItem('secret_side_sender_token');
-  if (!token) { setStatus('Save your GitHub token first (tap "GitHub Access" above).', 'err'); return; }
-  var repo = getRepo();
-  if (!repo) { setStatus('Pick or enter a character repo first.', 'err'); return; }
-
+  if (!token) { setStatus('Save your GitHub token first (tap ⚙ above).', 'err'); return; }
+  if (!repo) { setStatus('No character selected.', 'err'); return; }
   btn.disabled = true;
   setStatus('Sending…', 'busy');
-
-  var owner = 'temmiemanz';
-  var apiUrl = 'https://api.github.com/repos/' + owner + '/' + repo + '/contents/items-mailbox.json';
+  var apiUrl = 'https://api.github.com/repos/' + GH_OWNER + '/' + repo + '/contents/items-mailbox.json';
   var headers = { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json' };
-
   fetch(apiUrl, { headers: headers })
     .then(function(r) {
       if (r.status === 404) return { notFound: true };
@@ -1024,24 +1042,17 @@ function sendToMailbox(mutateFn, btn, successMsg, logDesc, itemForLog) {
       return r.json();
     })
     .then(function(fileData) {
-      var mailbox = { items: [], commands: [] };
-      var sha;
+      var mailbox = { items: [], commands: [] }; var sha;
       if (!fileData.notFound) {
         sha = fileData.sha;
-        try { mailbox = JSON.parse(b64DecodeUnicode(fileData.content.replace(/\n/g, ''))); }
-        catch (e) { mailbox = { items: [], commands: [] }; }
-        if (!mailbox.items) mailbox.items = [];
-        if (!mailbox.commands) mailbox.commands = [];
+        try { mailbox = JSON.parse(b64DecodeUnicode(fileData.content.replace(/\n/g, ''))); } catch (e) { mailbox = { items: [], commands: [] }; }
+        if (!mailbox.items) mailbox.items = []; if (!mailbox.commands) mailbox.commands = [];
       }
       mutateFn(mailbox);
       var newContent = b64EncodeUnicode(JSON.stringify(mailbox, null, 2));
       var body = { message: 'DM update: ' + logDesc, content: newContent };
       if (sha) body.sha = sha;
-      return fetch(apiUrl, {
-        method: 'PUT',
-        headers: Object.assign({ 'Content-Type': 'application/json' }, headers),
-        body: JSON.stringify(body)
-      });
+      return fetch(apiUrl, { method: 'PUT', headers: Object.assign({ 'Content-Type': 'application/json' }, headers), body: JSON.stringify(body) });
     })
     .then(function(r) {
       if (!r.ok) return r.json().then(function(e){ throw new Error(e.message || ('Write failed (status ' + r.status + ')')); });
@@ -1049,39 +1060,25 @@ function sendToMailbox(mutateFn, btn, successMsg, logDesc, itemForLog) {
       logSent(repo, logDesc, itemForLog);
       startDeployWatch(repo, token);
     })
-    .catch(function(err) {
-      setStatus('Failed: ' + err.message, 'err');
-    })
+    .catch(function(err) { setStatus('Failed: ' + err.message, 'err'); })
     .finally(function() { btn.disabled = false; });
 }
 
 function sendItem() {
   var item = buildItem();
   if (!item.name) { setStatus('Give the item a name first.', 'err'); return; }
-
   if (editingOriginalName) {
     var cmd = { cmdId: 'c' + Date.now() + Math.floor(Math.random()*10000), type: 'editItem', matchName: editingOriginalName, item: item };
     var originalName = editingOriginalName;
-    sendToMailbox(
-      function(mailbox) { mailbox.commands.push(cmd); },
-      $('sendBtn'),
+    sendToMailbox(currentRepo, function(mailbox) { mailbox.commands.push(cmd); }, $('sendBtn'),
       '"' + originalName + '" will be updated to "' + item.name + '" next time their sheet loads.',
-      'Updated item: ' + originalName + ' → ' + item.name
-    );
-    editingOriginalName = null;
-    updateEditBanner();
+      'Updated item: ' + originalName + ' → ' + item.name);
+    editingOriginalName = null; updateEditBanner();
     return;
   }
-
-  sendToMailbox(
-    function(mailbox) { mailbox.items.push(item); },
-    $('sendBtn'),
-    '"' + item.name + '" sent. It\'ll appear next time their sheet loads.',
-    'Gave item: ' + item.name,
-    item
-  );
+  sendToMailbox(currentRepo, function(mailbox) { mailbox.items.push(item); }, $('sendBtn'),
+    '"' + item.name + '" sent. It\'ll appear next time their sheet loads.', 'Gave item: ' + item.name, item);
 }
-
 function sendStatChange() {
   var field = $('adjField').value;
   var val = $('adjValue').value.trim();
@@ -1096,27 +1093,20 @@ function sendStatChange() {
   }
   else if (field === 'ac') { cmd.type = 'setAC'; cmd.value = val; desc = 'Set AC override to ' + val; }
   else { cmd.type = 'setStat'; cmd.stat = field; cmd.value = val; desc = 'Set ' + field.toUpperCase() + ' to ' + val; }
-
-  sendToMailbox(
-    function(mailbox) { mailbox.commands.push(cmd); },
-    $('adjBtn'),
-    desc + '. It\'ll apply next time their sheet loads.',
-    desc
-  );
+  var repo = currentRepo;
+  sendToMailbox(repo, function(mailbox) { mailbox.commands.push(cmd); }, $('adjBtn'), desc + '. It\'ll apply next time their sheet loads.', desc);
+  if (field === 'hp') { setKnownInfo(repo, 'hp', val + ($('adjHpMax').value.trim() ? ('/' + $('adjHpMax').value.trim()) : '')); }
+  else { setKnownInfo(repo, field, val); }
+  renderKnownInfo();
 }
-
 function sendRemoval() {
   var name = $('removeName').value.trim();
   if (!name) { setStatus('Enter the item\'s name first.', 'err'); return; }
   var cmd = { cmdId: 'c' + Date.now() + Math.floor(Math.random()*10000), type: 'removeItem', itemName: name };
-  sendToMailbox(
-    function(mailbox) { mailbox.commands.push(cmd); },
-    $('removeBtn'),
-    'Removal of "' + name + '" sent. It\'ll apply next time their sheet loads (only if the name matches exactly).',
-    'Removed item: ' + name
-  );
+  sendToMailbox(currentRepo, function(mailbox) { mailbox.commands.push(cmd); }, $('removeBtn'),
+    'Removal of "' + name + '" sent.', 'Removed item: ' + name);
+  $('removeName').value = '';
 }
-
 function onAdjFieldChange() {
   var isHp = $('adjField').value === 'hp';
   $('adjHpMaxWrap').style.display = isHp ? 'block' : 'none';
@@ -1124,104 +1114,83 @@ function onAdjFieldChange() {
   $('adjValueLabel').textContent = isHp ? 'Current HP' : 'New Value';
 }
 
-// ── TABS ──
-function switchTab(name) {
-  ['give','effects','tools','log'].forEach(function(t) {
-    $('tab-'+t).classList.toggle('active', t === name);
-    $('tabBtn-'+t).classList.toggle('active', t === name);
-  });
-  if (name === 'log') renderSentLog();
-  if (name === 'effects') renderEffectChips();
+/* ══════════════ TRANSFER ══════════════ */
+var transferPrefillItem = null;
+function populateTransferSelects() {
+  var opts = CHARACTERS.map(function(c){ return '<option value="'+c.repo+'">'+escHtml(c.name)+'</option>'; }).join('');
+  $('transferSource').innerHTML = opts;
+  $('transferDest').innerHTML = opts;
+}
+function prepTransferPanel() {
+  populateTransferSelects();
+  if (currentRepo) $('transferSource').value = currentRepo;
+  // pick a different default destination than source
+  var destDefault = CHARACTERS.find(function(c){ return c.repo !== $('transferSource').value; });
+  if (destDefault) $('transferDest').value = destDefault.repo;
+  onTransferSourceChange();
+  if (transferPrefillItem) {
+    $('transferItemPick').value = 'idx:' + transferPrefillItem.index;
+    onTransferItemPick();
+    transferPrefillItem = null;
+  }
+}
+function onTransferSourceChange() {
+  var repo = $('transferSource').value;
+  var items = getItemHistory(repo);
+  var sel = $('transferItemPick');
+  sel.innerHTML = items.map(function(x){ return '<option value="idx:'+x.index+'">'+escHtml(x.entry.item.name)+'</option>'; }).join('') +
+    '<option value="manual">Type a name manually…</option>';
+  onTransferItemPick();
+}
+function onTransferItemPick() {
+  $('transferManualWrap').style.display = $('transferItemPick').value === 'manual' ? 'block' : 'none';
+}
+function startTransferFromItem(repo, index) {
+  transferPrefillItem = { repo: repo, index: index };
+  openPanel('transfer');
+}
+function doTransfer() {
+  var source = $('transferSource').value;
+  var dest = $('transferDest').value;
+  if (!source || !dest) { setStatus('Pick both a source and a destination.', 'err'); return; }
+  if (source === dest) { setStatus('Source and destination can\'t be the same character.', 'err'); return; }
+
+  var pick = $('transferItemPick').value;
+  var item, itemName;
+  if (pick === 'manual') {
+    itemName = $('transferManualName').value.trim();
+    if (!itemName) { setStatus('Type the item\'s name first.', 'err'); return; }
+    item = {
+      mailId: 'm' + Date.now() + Math.floor(Math.random()*10000), name: itemName, type: 'Other', rarity: 'Common',
+      value: '', weight: '0', qty: 1, stackable: false, desc: 'Transferred from ' + charDisplayName(source) + '.',
+      notes: '', equippable: false, usable: false, consumable: false, uses: '',
+      props: '', weaponWt: '', twoHanded: false, ac: '', armorType: 'Light', strReq: '', stealthDisadv: false,
+      ammoDamage: '', ammoDmgType: '', effect: '', fx: {str:'',mnd:'',sol:'',def:''}, conditions: [], customFields: [], actions: []
+    };
+  } else {
+    var idx = parseInt(pick.replace('idx:', ''));
+    var log = getSentLog();
+    var entry = (log[source] || [])[idx];
+    if (!entry || !entry.item) { setStatus('Could not find that item in their history.', 'err'); return; }
+    item = JSON.parse(JSON.stringify(entry.item));
+    item.mailId = 'm' + Date.now() + Math.floor(Math.random()*10000);
+    itemName = item.name;
+  }
+
+  var removeCmd = { cmdId: 'c' + Date.now() + Math.floor(Math.random()*10000), type: 'removeItem', itemName: itemName };
+  sendToMailbox(source, function(mailbox) { mailbox.commands.push(removeCmd); }, $('transferBtn'),
+    '"' + itemName + '" removed from ' + charDisplayName(source) + '.', 'Transferred out: ' + itemName);
+
+  sendToMailbox(dest, function(mailbox) { mailbox.items.push(item); }, $('transferBtn'),
+    '"' + itemName + '" sent to ' + charDisplayName(dest) + '.', 'Transferred in: ' + itemName, item);
+
+  closePanel();
 }
 
-// ── STATUS EFFECTS — DM Eyes Only. Purely local to this device, per character.
-// Nothing here is ever sent to GitHub or to anyone's sheet — it's just your own notes.
-function getEffectsStore() {
-  var store; try { store = JSON.parse(localStorage.getItem('secret_side_dm_effects')) || {}; } catch(e) { store = {}; }
-  return store;
-}
-function saveEffectsStore(store) {
-  try { localStorage.setItem('secret_side_dm_effects', JSON.stringify(store)); } catch(e) {}
-}
-function renderEffectChips() {
-  var repo = getRepo();
-  var wrap = $('effectChips');
-  if (!wrap) return;
-  if (!repo) { wrap.innerHTML = '<div class="effect-chip-empty">Pick a character first.</div>'; return; }
-  var store = getEffectsStore();
-  var effects = store[repo] || {};
-  var names = Object.keys(effects).filter(function(n){ return effects[n] > 0; });
-  if (!names.length) { wrap.innerHTML = '<div class="effect-chip-empty">No active effects tracked for this character.</div>'; return; }
-  wrap.innerHTML = names.map(function(name) {
-    var safe = name.replace(/'/g, "\\'");
-    return '<div class="effect-chip">' +
-      '<span class="effect-chip-name">' + esc(name) + '</span>' +
-      '<span class="effect-chip-count">&times;' + effects[name] + '</span>' +
-      '<button class="effect-chip-btn" onclick="adjustEffect(\'' + safe + '\',-1)">&minus;</button>' +
-      '<button class="effect-chip-btn" onclick="adjustEffect(\'' + safe + '\',1)">+</button>' +
-      '<button class="effect-chip-x" onclick="removeEffect(\'' + safe + '\')" title="Remove">&times;</button>' +
-    '</div>';
-  }).join('');
-}
-function adjustEffect(name, delta) {
-  var repo = getRepo(); if (!repo) return;
-  var store = getEffectsStore();
-  if (!store[repo]) store[repo] = {};
-  store[repo][name] = (store[repo][name] || 0) + delta;
-  if (store[repo][name] <= 0) delete store[repo][name];
-  saveEffectsStore(store);
-  renderEffectChips();
-}
-function removeEffect(name) {
-  var repo = getRepo(); if (!repo) return;
-  var store = getEffectsStore();
-  if (store[repo]) delete store[repo][name];
-  saveEffectsStore(store);
-  renderEffectChips();
-}
-function applyEffectChange() {
-  var repo = getRepo();
-  if (!repo) { setStatus('Pick a character first.', 'err'); return; }
-  var name = $('effectName').value.trim();
-  if (!name) { setStatus('Name the effect first.', 'err'); return; }
-  var amt = parseInt($('effectAmount').value) || 1;
-  var mode = $('effectMode').value;
-  var store = getEffectsStore();
-  if (!store[repo]) store[repo] = {};
-  if (mode === 'add') store[repo][name] = (store[repo][name] || 0) + amt;
-  else if (mode === 'remove') store[repo][name] = (store[repo][name] || 0) - amt;
-  else store[repo][name] = amt;
-  if (store[repo][name] <= 0) delete store[repo][name];
-  saveEffectsStore(store);
-  renderEffectChips();
-  setStatus('Updated ' + name + ' for this character (saved on this device only).', 'ok');
-  $('effectName').value = '';
-}
-function clearOneEffect() {
-  var repo = getRepo();
-  if (!repo) { setStatus('Pick a character first.', 'err'); return; }
-  var name = $('effectName').value.trim();
-  if (!name) { setStatus('Name the effect first.', 'err'); return; }
-  var store = getEffectsStore();
-  if (store[repo]) delete store[repo][name];
-  saveEffectsStore(store);
-  renderEffectChips();
-  setStatus('Cleared ' + name + '.', 'ok');
-}
-function clearAllEffectsForChar() {
-  var repo = getRepo();
-  if (!repo) { setStatus('Pick a character first.', 'err'); return; }
-  var store = getEffectsStore();
-  store[repo] = {};
-  saveEffectsStore(store);
-  renderEffectChips();
-  setStatus('Cleared all effects for this character.', 'ok');
-}
-
-// ── RANDOM TARGET ──
+/* ══════════════ TOOLS: random target, dice, initiative ══════════════ */
 function loadPartyList() {
   var saved; try { saved = JSON.parse(localStorage.getItem('secret_side_party_list')); } catch(e) {}
-  var names = saved && saved.length ? saved : ['Sanguine','Sloan','Camille','Estella','Odette','Asher',"F.F",'Meatball'];
+  var names = saved && saved.length ? saved : CHARACTERS.map(function(c){ return c.name; });
   $('partyList').value = names.join('\n');
 }
 function pickRandomTarget() {
@@ -1232,13 +1201,9 @@ function pickRandomTarget() {
   $('randomResultBox').classList.add('show');
   $('randomResultName').textContent = pick;
 }
-
-// ── DICE ROLLER ──
 function rollDie(sides) {
   var r = 1 + Math.floor(Math.random() * sides);
-  $('diceResultBox').classList.add('show');
-  $('diceResultNum').textContent = r;
-  $('diceResultDetail').textContent = 'd' + sides;
+  $('diceResultBox').classList.add('show'); $('diceResultNum').textContent = r; $('diceResultDetail').textContent = 'd' + sides;
 }
 function rollCustomExpr() {
   var expr = $('customDiceExpr').value.trim();
@@ -1246,72 +1211,56 @@ function rollCustomExpr() {
   var m = expr.match(/^(\d*)d(\d+)\s*([+-]\s*\d+)?$/i);
   $('diceResultBox').classList.add('show');
   if (!m) { $('diceResultNum').textContent = '—'; $('diceResultDetail').textContent = 'Format like 2d6+3'; return; }
-  var count = parseInt(m[1]) || 1;
-  var sides = parseInt(m[2]);
-  var mod = m[3] ? parseInt(m[3].replace(/\s+/g,'')) : 0;
-  var rolls = [];
-  for (var i = 0; i < count; i++) rolls.push(1 + Math.floor(Math.random() * sides));
+  var count = parseInt(m[1]) || 1, sides = parseInt(m[2]), mod = m[3] ? parseInt(m[3].replace(/\s+/g,'')) : 0;
+  var rolls = []; for (var i = 0; i < count; i++) rolls.push(1 + Math.floor(Math.random() * sides));
   var total = rolls.reduce(function(a,b){ return a+b; }, 0) + mod;
   $('diceResultNum').textContent = total;
   $('diceResultDetail').textContent = rolls.join(' + ') + (mod ? (mod > 0 ? ' + ' + mod : ' − ' + Math.abs(mod)) : '');
 }
-
-// ── INITIATIVE TRACKER (local scratchpad for the current session) ──
 var initEntries = [], initTurn = 0;
 function loadInit() {
   var d; try { d = JSON.parse(localStorage.getItem('secret_side_init')); } catch(e) {}
   if (d) { initEntries = d.entries || []; initTurn = d.turn || 0; }
   renderInit();
 }
-function saveInit() {
-  try { localStorage.setItem('secret_side_init', JSON.stringify({ entries: initEntries, turn: initTurn })); } catch(e) {}
-}
+function saveInit() { try { localStorage.setItem('secret_side_init', JSON.stringify({ entries: initEntries, turn: initTurn })); } catch(e) {} }
 function addInitEntry() {
-  var name = $('initName').value.trim();
-  var val = parseInt($('initValue').value);
+  var name = $('initName').value.trim(); var val = parseInt($('initValue').value);
   if (!name || isNaN(val)) return;
   initEntries.push({ name: name, val: val });
   initEntries.sort(function(a,b){ return b.val - a.val; });
   $('initName').value = ''; $('initValue').value = '';
   saveInit(); renderInit();
 }
-function removeInitEntry(i) {
-  initEntries.splice(i, 1);
-  if (initTurn >= initEntries.length) initTurn = 0;
-  saveInit(); renderInit();
-}
-function nextInitTurn() {
-  if (!initEntries.length) return;
-  initTurn = (initTurn + 1) % initEntries.length;
-  saveInit(); renderInit();
-}
-function clearInitList() {
-  initEntries = []; initTurn = 0;
-  saveInit(); renderInit();
-}
+function removeInitEntry(i) { initEntries.splice(i, 1); if (initTurn >= initEntries.length) initTurn = 0; saveInit(); renderInit(); }
+function nextInitTurn() { if (!initEntries.length) return; initTurn = (initTurn + 1) % initEntries.length; saveInit(); renderInit(); }
+function clearInitList() { initEntries = []; initTurn = 0; saveInit(); renderInit(); }
 function renderInit() {
   var wrap = $('initList');
   if (!initEntries.length) { wrap.innerHTML = '<div class="hint" style="margin-top:0;">No combatants added yet.</div>'; return; }
   wrap.innerHTML = initEntries.map(function(e, i) {
     var active = initEntries.length && i === (initTurn % initEntries.length);
     return '<div class="init-row' + (active ? ' active-turn' : '') + '">' +
-      '<div class="init-row-name">' + (active ? '▶ ' : '') + esc(e.name) + '</div>' +
-      '<div style="display:flex;align-items:center;gap:8px;">' +
-        '<span class="init-badge">' + e.val + '</span>' +
-        '<button class="log-edit-btn" onclick="removeInitEntry(' + i + ')">Remove</button>' +
-      '</div>' +
-    '</div>';
+      '<div class="init-row-name">' + (active ? '▶ ' : '') + escHtml(e.name) + '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;"><span class="init-badge">' + e.val + '</span>' +
+      '<button class="mini-btn" onclick="removeInitEntry(' + i + ')">Remove</button></div></div>';
   }).join('');
 }
 
-// ── DEPLOY WATCHER ──
-// After a successful send, GitHub still has to rebuild and redeploy that
-// character's page before the change is actually live. This polls GitHub
-// Actions for the run our commit just triggered and lets you know the
-// moment their page is really updated — so you know exactly when it's
-// safe to tell them to refresh.
-var deployWatches = {}; // repo -> { state: 'pending'|'ready'|'failed'|'timeout', label, sentAt, tries }
+/* ══════════════ GITHUB TOKEN SETTINGS ══════════════ */
+function saveToken() {
+  var t = $('ghToken').value.trim(); if (!t) return;
+  localStorage.setItem('secret_side_sender_token', t);
+  $('tokenSavedMsg').style.display = 'block';
+  updateTokenStatus();
+}
+function updateTokenStatus() {
+  var t = localStorage.getItem('secret_side_sender_token');
+  $('tokenStatus').textContent = t ? '(saved)' : '(not set)';
+}
 
+/* ══════════════ DEPLOY WATCHER ══════════════ */
+var deployWatches = {};
 function startDeployWatch(repo, token) {
   var label = charDisplayName(repo);
   deployWatches[repo] = { state: 'pending', label: label, sentAt: Date.now(), tries: 0 };
@@ -1321,28 +1270,20 @@ function startDeployWatch(repo, token) {
   }
   pollDeployWatch(repo, token);
 }
-
 function pollDeployWatch(repo, token) {
   var watch = deployWatches[repo];
-  if (!watch) return; // dismissed
+  if (!watch) return;
   watch.tries++;
-  var MAX_TRIES = 40; // ~3.5 minutes at the poll interval below
-
-  fetch('https://api.github.com/repos/temmiemanz/' + repo + '/actions/runs?per_page=5', {
+  var MAX_TRIES = 40;
+  fetch('https://api.github.com/repos/' + GH_OWNER + '/' + repo + '/actions/runs?per_page=5', {
     headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json' }
   })
     .then(function(r) { return r.ok ? r.json() : null; })
     .then(function(data) {
       var watch = deployWatches[repo];
-      if (!watch) return; // dismissed while this request was in flight
-
+      if (!watch) return;
       var runs = (data && data.workflow_runs) || [];
-      // Find the run that matches our send — created at or after we sent it, allowing
-      // for clock skew and the few seconds GitHub takes to actually kick the run off.
-      var match = runs.find(function(run) {
-        return new Date(run.created_at).getTime() >= (watch.sentAt - 20000);
-      });
-
+      var match = runs.find(function(run) { return new Date(run.created_at).getTime() >= (watch.sentAt - 20000); });
       if (match && match.status === 'completed') {
         watch.state = match.conclusion === 'success' ? 'ready' : 'failed';
         renderDeployWatches();
@@ -1350,12 +1291,7 @@ function pollDeployWatch(repo, token) {
         if (watch.state === 'ready') setTimeout(function(){ dismissDeployWatch(repo); }, 15000);
         return;
       }
-
-      if (watch.tries >= MAX_TRIES) {
-        watch.state = 'timeout';
-        renderDeployWatches();
-        return;
-      }
+      if (watch.tries >= MAX_TRIES) { watch.state = 'timeout'; renderDeployWatches(); return; }
       setTimeout(function(){ pollDeployWatch(repo, token); }, 5000);
     })
     .catch(function() {
@@ -1365,7 +1301,6 @@ function pollDeployWatch(repo, token) {
       setTimeout(function(){ pollDeployWatch(repo, token); }, 5000);
     });
 }
-
 function notifyDeployDone(label, success) {
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
   try {
@@ -1374,49 +1309,28 @@ function notifyDeployDone(label, success) {
     });
   } catch(e) {}
 }
-
-function dismissDeployWatch(repo) {
-  delete deployWatches[repo];
-  renderDeployWatches();
-}
-
+function dismissDeployWatch(repo) { delete deployWatches[repo]; renderDeployWatches(); }
 function renderDeployWatches() {
   var wrap = $('deployWatchList');
-  if (!wrap) return;
-  var repos = Object.keys(deployWatches);
-  wrap.innerHTML = repos.map(function(repo) {
+  wrap.innerHTML = Object.keys(deployWatches).map(function(repo) {
     var w = deployWatches[repo];
-    if (w.state === 'pending') {
-      return '<div class="deploy-watch pending"><span class="deploy-watch-spin"></span>' +
-        'Deploying to ' + esc(w.label) + '…' +
-        '<button class="deploy-watch-x" onclick="dismissDeployWatch(\'' + repo + '\')">&times;</button></div>';
-    }
-    if (w.state === 'ready') {
-      return '<div class="deploy-watch ready">✅ ' + esc(w.label) + ' is live — tell them to refresh!' +
-        '<button class="deploy-watch-x" onclick="dismissDeployWatch(\'' + repo + '\')">&times;</button></div>';
-    }
-    if (w.state === 'failed') {
-      return '<div class="deploy-watch failed">⚠️ ' + esc(w.label) + '\'s deploy failed — check the Actions tab on their repo.' +
-        '<button class="deploy-watch-x" onclick="dismissDeployWatch(\'' + repo + '\')">&times;</button></div>';
-    }
-    return '<div class="deploy-watch pending">⏳ Still waiting on ' + esc(w.label) + ' — check the Actions tab if this seems stuck.' +
-      '<button class="deploy-watch-x" onclick="dismissDeployWatch(\'' + repo + '\')">&times;</button></div>';
+    if (w.state === 'pending') return '<div class="deploy-watch pending"><span class="deploy-watch-spin"></span>Deploying to ' + escHtml(w.label) + '…<button class="deploy-watch-x" onclick="dismissDeployWatch(\''+repo+'\')">&times;</button></div>';
+    if (w.state === 'ready')   return '<div class="deploy-watch ready">✅ ' + escHtml(w.label) + ' is live — tell them to refresh!<button class="deploy-watch-x" onclick="dismissDeployWatch(\''+repo+'\')">&times;</button></div>';
+    if (w.state === 'failed')  return '<div class="deploy-watch failed">⚠️ ' + escHtml(w.label) + '\'s deploy failed — check the Actions tab.<button class="deploy-watch-x" onclick="dismissDeployWatch(\''+repo+'\')">&times;</button></div>';
+    return '<div class="deploy-watch pending">⏳ Still waiting on ' + escHtml(w.label) + '.<button class="deploy-watch-x" onclick="dismissDeployWatch(\''+repo+'\')">&times;</button></div>';
   }).join('');
 }
 
+/* ══════════════ INIT ══════════════ */
 populateTemplates();
 buildTypePills();
 showTypeSection();
 addActionRow();
 updateTokenStatus();
 onAdjFieldChange();
-renderSentLog();
 loadPartyList();
 loadInit();
-renderEffectChips();
-renderCharLinks();
-onCharChange();
-$('tokenBody').style.display = localStorage.getItem('secret_side_sender_token') ? 'none' : 'block';
+renderCharGrid();
 </script>
 </body>
 </html>
