@@ -458,8 +458,6 @@ textarea { resize: vertical; min-height: 60px; }
   <button class="btn btn-secondary" onclick="addActionRow()">+ Add Action</button>
 
   <button class="btn btn-primary" id="sendBtn" onclick="sendItem()">Send Item</button>
-  <button class="btn btn-secondary" id="registerBtn" onclick="registerItemOnly()">Register Only (already on their sheet)</button>
-  <div class="hint" style="margin-top:0;">Use this for things already sitting in their mailbox or sheet — like a hand-added starting weapon — so it shows up here without sending anything to GitHub.</div>
 </div>
 
 <div class="panel" id="panel-adjust">
@@ -488,18 +486,20 @@ textarea { resize: vertical; min-height: 60px; }
 <div class="panel" id="panel-transfer">
   <div class="panel-handle"></div>
   <div class="panel-head"><div class="panel-title">Transfer Item</div><button class="icon-btn" onclick="closePanel()">✕</button></div>
-  <div class="hint" style="margin-top:0;">Removes the item from Source and gives it to Destination — both happen together.</div>
-
-  <label>From (Source)</label>
-  <select id="transferSource" onchange="onTransferSourceChange()"></select>
+  <div class="hint" style="margin-top:0;">Pick an item — its owner is shown right in the list — and where it's going. Both sides update together.</div>
 
   <label>Item</label>
-  <select id="transferItemPick" onchange="onTransferItemPick()"></select>
+  <select id="transferItemPick" onchange="onTransferItemPick()">
+    <option value="">Loading everyone's items…</option>
+  </select>
   <div id="transferManualWrap" style="display:none;">
     <label>Item Name</label>
     <input type="text" id="transferManualName" placeholder="Type the item's name">
-    <div class="hint">Not in their sent history — this sends a bare-bones item with just this name. Edit it fully afterward from the destination's Items box if needed.</div>
+    <label>From (Source)</label>
+    <select id="transferSource"></select>
+    <div class="hint">Not found in anyone's mailbox — this sends a bare-bones item with just this name. Edit it fully afterward from the destination's Items box if needed.</div>
   </div>
+  <div class="hint" id="transferTakingFrom" style="display:none;"></div>
 
   <label>To (Destination)</label>
   <select id="transferDest"></select>
@@ -608,29 +608,75 @@ function renderKnownInfo() {
   }).join('') + '</div>';
 }
 
-// ── ITEMS BOX (derived from sent-item history) ──
+// ── ITEMS BOX — reads the character's actual mailbox file on GitHub, so it
+// catches everything that's really there, including items hand-typed into
+// the mailbox JSON directly (like starting weapons), not just what this
+// device remembers sending. Replays removeItem/editItem commands the same
+// way the sheet itself does, so the list reflects the current state, not
+// just a raw history dump.
 function getSentLog() {
   var log; try { log = JSON.parse(localStorage.getItem('secret_side_sent_log')) || {}; } catch(e) { log = {}; }
   return log;
 }
-function getItemHistory(repo) {
-  var log = getSentLog();
-  var entries = log[repo] || [];
-  var out = [];
-  entries.forEach(function(e, i) { if (e.item) out.push({ index: i, entry: e }); });
-  return out;
+var liveItemsCache = {}; // repo -> current item array, from the last successful fetch
+
+function fetchMailboxRaw(repo, cb) {
+  var token = localStorage.getItem('secret_side_sender_token');
+  var headers = { 'Accept': 'application/vnd.github+json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  fetch('https://api.github.com/repos/' + GH_OWNER + '/' + repo + '/contents/items-mailbox.json', { headers: headers })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(data){
+      if (!data || !data.content) { cb(null); return; }
+      try { cb(JSON.parse(b64DecodeUnicode(data.content.replace(/\n/g, '')))); }
+      catch (e) { cb(null); }
+    })
+    .catch(function(){ cb(null); });
+}
+// Same replay logic as the sheet's own invApplyDMCommand, for items[] + commands[].
+function computeCurrentItems(mailbox) {
+  var items = (mailbox.items || []).map(function(it){ return JSON.parse(JSON.stringify(it)); });
+  (mailbox.commands || []).forEach(function(cmd) {
+    if (cmd.type === 'removeItem') {
+      var target = (cmd.itemName || '').trim().toLowerCase();
+      var idx = items.findIndex(function(i){ return (i.name||'').trim().toLowerCase() === target; });
+      if (idx !== -1) items.splice(idx, 1);
+    } else if (cmd.type === 'editItem') {
+      var target2 = (cmd.matchName || '').trim().toLowerCase();
+      var idx2 = items.findIndex(function(i){ return (i.name||'').trim().toLowerCase() === target2; });
+      if (idx2 !== -1) items[idx2] = JSON.parse(JSON.stringify(cmd.item));
+    }
+  });
+  return items;
 }
 function renderItemsBox() {
-  var items = getItemHistory(currentRepo);
-  if (!items.length) { $('itemsBoxBody').innerHTML = '<div class="box-empty">Nothing given yet.</div>'; return; }
-  $('itemsBoxBody').innerHTML = items.map(function(x) {
-    var it = x.entry.item;
-    return '<div class="item-row"><div class="item-row-main"><div class="item-row-name">' + escHtml(it.name) + '</div><div class="item-row-type">' + escHtml(it.type || '') + '</div></div>' +
-      '<div class="item-row-actions">' +
-        '<button class="mini-btn" onclick="editLoggedItem(\'' + currentRepo + '\',' + x.index + ')">Edit</button>' +
-        '<button class="mini-btn" onclick="startTransferFromItem(\'' + currentRepo + '\',' + x.index + ')">Transfer</button>' +
-      '</div></div>';
-  }).join('');
+  var reqRepo = currentRepo;
+  $('itemsBoxBody').innerHTML = '<div class="box-empty">Checking their mailbox…</div>';
+  fetchMailboxRaw(reqRepo, function(mailbox) {
+    if (reqRepo !== currentRepo) return; // navigated away while this was in flight
+    if (!mailbox) {
+      $('itemsBoxBody').innerHTML = '<div class="box-empty">Couldn\'t read their mailbox right now (check your token, or they may not have one yet).</div>';
+      return;
+    }
+    var items = computeCurrentItems(mailbox);
+    liveItemsCache[reqRepo] = items;
+    if (!items.length) { $('itemsBoxBody').innerHTML = '<div class="box-empty">Nothing in their mailbox yet.</div>'; return; }
+    $('itemsBoxBody').innerHTML = items.map(function(it, i) {
+      return '<div class="item-row"><div class="item-row-main"><div class="item-row-name">' + escHtml(it.name) + '</div><div class="item-row-type">' + escHtml(it.type || '') + '</div></div>' +
+        '<div class="item-row-actions">' +
+          '<button class="mini-btn" onclick="editMailboxItem(\'' + reqRepo + '\',' + i + ')">Edit</button>' +
+          '<button class="mini-btn" onclick="startTransferFromMailboxItem(\'' + reqRepo + '\',' + i + ')">Transfer</button>' +
+        '</div></div>';
+    }).join('');
+  });
+}
+function editMailboxItem(repo, index) {
+  var item = (liveItemsCache[repo] || [])[index];
+  if (!item) return;
+  currentRepo = repo;
+  loadItemIntoForm(item);
+  editingOriginalName = item.name;
+  openPanel('give');
 }
 
 // ── LOG BOX (full chronological record) ──
@@ -1013,15 +1059,6 @@ function updateEditBanner() {
   document.querySelector('#panel-give .card-title').insertAdjacentElement('beforebegin', banner);
 }
 function cancelEdit() { editingOriginalName = null; updateEditBanner(); }
-function editLoggedItem(repo, index) {
-  var log = getSentLog();
-  var entry = (log[repo] || [])[index];
-  if (!entry || !entry.item) return;
-  currentRepo = repo;
-  loadItemIntoForm(entry.item);
-  editingOriginalName = entry.item.name;
-  openPanel('give');
-}
 
 /* ══════════════ MAILBOX WRITER + DEPLOY WATCH ══════════════ */
 function b64EncodeUnicode(str) { return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(m, p1) { return String.fromCharCode('0x' + p1); })); }
@@ -1081,15 +1118,6 @@ function sendItem() {
   sendToMailbox(currentRepo, function(mailbox) { mailbox.items.push(item); }, $('sendBtn'),
     '"' + item.name + '" sent. It\'ll appear next time their sheet loads.', 'Gave item: ' + item.name, item);
 }
-function registerItemOnly() {
-  var item = buildItem();
-  if (!item.name) { setStatus('Give the item a name first.', 'err'); return; }
-  logSent(currentRepo, 'Registered: ' + item.name, item);
-  setStatus('"' + item.name + '" added to ' + charDisplayName(currentRepo) + '\'s Items list. Nothing was sent to GitHub.', 'ok');
-  editingOriginalName = null;
-  updateEditBanner();
-  closePanel();
-}
 function sendStatChange() {
   var field = $('adjField').value;
   var val = $('adjValue').value.trim();
@@ -1126,51 +1154,84 @@ function onAdjFieldChange() {
 }
 
 /* ══════════════ TRANSFER ══════════════ */
-var transferPrefillItem = null;
-function populateTransferSelects() {
-  var opts = CHARACTERS.map(function(c){ return '<option value="'+c.repo+'">'+escHtml(c.name)+'</option>'; }).join('');
-  $('transferSource').innerHTML = opts;
-  $('transferDest').innerHTML = opts;
-}
+// Transfer's item picker is ONE combined list across every character, each
+// option labeled "Item Name - Owner" — pulled live from everyone's actual
+// mailbox, same as the per-character Items box. Picking an item auto-fills
+// who it's coming from; only the manual fallback needs Source picked by hand.
+var transferAllItems = []; // flat list: { repo, item }
+var transferPrefillRepo = null;
+
 function prepTransferPanel() {
-  populateTransferSelects();
-  if (currentRepo) $('transferSource').value = currentRepo;
-  // pick a different default destination than source
-  var destDefault = CHARACTERS.find(function(c){ return c.repo !== $('transferSource').value; });
-  if (destDefault) $('transferDest').value = destDefault.repo;
-  onTransferSourceChange();
-  if (transferPrefillItem) {
-    $('transferItemPick').value = 'idx:' + transferPrefillItem.index;
-    onTransferItemPick();
-    transferPrefillItem = null;
+  $('transferDest').innerHTML = CHARACTERS.map(function(c){ return '<option value="'+c.repo+'">'+escHtml(c.name)+'</option>'; }).join('');
+  if (currentRepo) {
+    var otherDefault = CHARACTERS.find(function(c){ return c.repo !== currentRepo; });
+    if (otherDefault) $('transferDest').value = otherDefault.repo;
   }
+  $('transferSource').innerHTML = $('transferDest').innerHTML;
+  $('transferItemPick').innerHTML = '<option value="">Loading everyone\'s items…</option>';
+  $('transferTakingFrom').style.display = 'none';
+  $('transferManualWrap').style.display = 'none';
+
+  var prefillRepo = transferPrefillRepo; transferPrefillRepo = null;
+  var toFetch = CHARACTERS.map(function(c){ return c.repo; });
+  var results = {};
+  var remaining = toFetch.length;
+  toFetch.forEach(function(repo) {
+    fetchMailboxRaw(repo, function(mailbox) {
+      results[repo] = mailbox ? computeCurrentItems(mailbox) : (liveItemsCache[repo] || []);
+      remaining--;
+      if (remaining === 0) buildTransferItemList(results, prefillRepo);
+    });
+  });
 }
-function onTransferSourceChange() {
-  var repo = $('transferSource').value;
-  var items = getItemHistory(repo);
-  var sel = $('transferItemPick');
-  sel.innerHTML = items.map(function(x){ return '<option value="idx:'+x.index+'">'+escHtml(x.entry.item.name)+'</option>'; }).join('') +
-    '<option value="manual">Type a name manually…</option>';
+function buildTransferItemList(results, prefillRepo) {
+  transferAllItems = [];
+  CHARACTERS.forEach(function(c) {
+    (results[c.repo] || []).forEach(function(it) { transferAllItems.push({ repo: c.repo, item: it }); });
+  });
+  var opts = transferAllItems.map(function(x, i) {
+    return '<option value="' + i + '">' + escHtml(x.item.name) + ' — ' + escHtml(charDisplayName(x.repo)) + '</option>';
+  }).join('') + '<option value="manual">Type a name manually…</option>';
+  $('transferItemPick').innerHTML = opts || '<option value="manual">Type a name manually…</option>';
+
+  if (prefillRepo) {
+    var idx = transferAllItems.findIndex(function(x){ return x.repo === prefillRepo; });
+    if (idx !== -1) $('transferItemPick').value = String(idx);
+  }
   onTransferItemPick();
 }
 function onTransferItemPick() {
-  $('transferManualWrap').style.display = $('transferItemPick').value === 'manual' ? 'block' : 'none';
+  var val = $('transferItemPick').value;
+  if (val === 'manual') {
+    $('transferManualWrap').style.display = 'block';
+    $('transferTakingFrom').style.display = 'none';
+  } else {
+    $('transferManualWrap').style.display = 'none';
+    var x = transferAllItems[parseInt(val)];
+    if (x) {
+      $('transferTakingFrom').style.display = 'block';
+      $('transferTakingFrom').textContent = 'Taking from ' + charDisplayName(x.repo) + '.';
+      if ($('transferDest').value === x.repo) {
+        var alt = CHARACTERS.find(function(c){ return c.repo !== x.repo; });
+        if (alt) $('transferDest').value = alt.repo;
+      }
+    }
+  }
 }
-function startTransferFromItem(repo, index) {
-  transferPrefillItem = { repo: repo, index: index };
+function startTransferFromMailboxItem(repo, index) {
+  transferPrefillRepo = repo;
   openPanel('transfer');
 }
 function doTransfer() {
-  var source = $('transferSource').value;
   var dest = $('transferDest').value;
-  if (!source || !dest) { setStatus('Pick both a source and a destination.', 'err'); return; }
-  if (source === dest) { setStatus('Source and destination can\'t be the same character.', 'err'); return; }
-
   var pick = $('transferItemPick').value;
-  var item, itemName;
+  var item, itemName, source;
+
   if (pick === 'manual') {
     itemName = $('transferManualName').value.trim();
+    source = $('transferSource').value;
     if (!itemName) { setStatus('Type the item\'s name first.', 'err'); return; }
+    if (!source) { setStatus('Pick who currently has it.', 'err'); return; }
     item = {
       mailId: 'm' + Date.now() + Math.floor(Math.random()*10000), name: itemName, type: 'Other', rarity: 'Common',
       value: '', weight: '0', qty: 1, stackable: false, desc: 'Transferred from ' + charDisplayName(source) + '.',
@@ -1179,14 +1240,16 @@ function doTransfer() {
       ammoDamage: '', ammoDmgType: '', effect: '', fx: {str:'',mnd:'',sol:'',def:''}, conditions: [], customFields: [], actions: []
     };
   } else {
-    var idx = parseInt(pick.replace('idx:', ''));
-    var log = getSentLog();
-    var entry = (log[source] || [])[idx];
-    if (!entry || !entry.item) { setStatus('Could not find that item in their history.', 'err'); return; }
-    item = JSON.parse(JSON.stringify(entry.item));
+    var x = transferAllItems[parseInt(pick)];
+    if (!x) { setStatus('Pick an item first.', 'err'); return; }
+    source = x.repo;
+    item = JSON.parse(JSON.stringify(x.item));
     item.mailId = 'm' + Date.now() + Math.floor(Math.random()*10000);
     itemName = item.name;
   }
+
+  if (!dest) { setStatus('Pick a destination.', 'err'); return; }
+  if (source === dest) { setStatus('Source and destination can\'t be the same character.', 'err'); return; }
 
   var removeCmd = { cmdId: 'c' + Date.now() + Math.floor(Math.random()*10000), type: 'removeItem', itemName: itemName };
   sendToMailbox(source, function(mailbox) { mailbox.commands.push(removeCmd); }, $('transferBtn'),
