@@ -458,6 +458,8 @@ textarea { resize: vertical; min-height: 60px; }
   <button class="btn btn-secondary" onclick="addActionRow()">+ Add Action</button>
 
   <button class="btn btn-primary" id="sendBtn" onclick="sendItem()">Send Item</button>
+  <button class="btn btn-secondary" id="registerBtn" onclick="registerItemOnly()">Register Only (already on their sheet)</button>
+  <div class="hint" style="margin-top:0;">Use this for things already sitting in their mailbox or sheet — like a hand-added starting weapon — so it shows up here without sending anything to GitHub.</div>
 </div>
 
 <div class="panel" id="panel-adjust">
@@ -1078,6 +1080,15 @@ function sendItem() {
   }
   sendToMailbox(currentRepo, function(mailbox) { mailbox.items.push(item); }, $('sendBtn'),
     '"' + item.name + '" sent. It\'ll appear next time their sheet loads.', 'Gave item: ' + item.name, item);
+}
+function registerItemOnly() {
+  var item = buildItem();
+  if (!item.name) { setStatus('Give the item a name first.', 'err'); return; }
+  logSent(currentRepo, 'Registered: ' + item.name, item);
+  setStatus('"' + item.name + '" added to ' + charDisplayName(currentRepo) + '\'s Items list. Nothing was sent to GitHub.', 'ok');
+  editingOriginalName = null;
+  updateEditBanner();
+  closePanel();
 }
 function sendStatChange() {
   var field = $('adjField').value;
