@@ -11,10 +11,10 @@
         {
           "name": "Tangle",
           "damage": "0",
-          "dmgType": "",
+          "dmgType": "Binding",
           "range": "15ft",
           "damage2": "",
-          "dmgType2": "Binding",
+          "dmgType2": "",
           "notes": "Zero damage, but once used on target (and hit) then add a Wrapped Token, once three Wrapped Tokens are accumulated the target is immobile. After one turn of being immobile the target gets dragged away."
         }
       ],
