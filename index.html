@@ -259,6 +259,8 @@ textarea { resize: vertical; min-height: 60px; }
 .result-big { font-size: 30px; font-weight: 700; color: var(--accent); line-height: 1.1; }
 .result-small { font-size: 12px; color: var(--dim); margin-top: 4px; }
 .init-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.init-row.active-turn { align-items: flex-start; padding: 10px 10px 12px; }
+.init-expand { margin-top: 8px; }
 .init-row:last-child { border-bottom: none; }
 .init-row.active-turn { background: rgba(200,168,75,0.08); border-radius: 6px; }
 .init-row-name { display: flex; align-items: center; gap: 6px; }
@@ -1738,6 +1740,7 @@ function deletePreset(id) {
     });
   });
 }
+var pendingInitPreset = null; // carries a preset's desc/actions through to the next addInitEntry()
 function quickFillInitiative(id) {
   var preset = presetLibraryCache.find(function(p){ return p.id === id; });
   if (!preset) return;
@@ -1747,7 +1750,8 @@ function quickFillInitiative(id) {
   $('initHp').value = preset.hp || '';
   $('initAc').value = preset.ac || '';
   $('initValue').focus();
-  setStatus('Filled in below — add their initiative roll and tap "+ Add Combatant".', 'ok');
+  pendingInitPreset = { name: preset.name, desc: preset.desc || '', actions: preset.actions || [] };
+  setStatus('Filled in below — add their initiative roll and tap "+ Add Combatant". Their actions will show up when it\'s their turn.', 'ok');
 }
 
 /* ══════════════ TOOLS: random target, dice, initiative ══════════════ */
@@ -1798,6 +1802,11 @@ function addInitEntry() {
     if (!isNaN(hp)) { entry.hp = hp; entry.maxHp = hp; }
     if (!isNaN(ac)) entry.ac = ac;
   }
+  if (pendingInitPreset && pendingInitPreset.name === name) {
+    if (pendingInitPreset.desc) entry.desc = pendingInitPreset.desc;
+    if (pendingInitPreset.actions && pendingInitPreset.actions.length) entry.actions = pendingInitPreset.actions;
+  }
+  pendingInitPreset = null;
   initEntries.push(entry);
   initEntries.sort(function(a,b){ return b.val - a.val; });
   $('initName').value = ''; $('initValue').value = ''; $('initHp').value = ''; $('initAc').value = '';
@@ -1827,9 +1836,24 @@ function renderInit() {
         (e.ac !== undefined ? '<span class="init-ac-val">AC ' + e.ac + '</span>' : '') +
       '</div>';
     }
+    var expandBlock = '';
+    if (active && (e.desc || (e.actions && e.actions.length))) {
+      var actionsHtml = (e.actions || []).map(function(a) {
+        var line = escHtml(a.name);
+        if (a.damage) line += ' — ' + escHtml(a.damage) + (a.dmgType ? ' ' + escHtml(a.dmgType) : '');
+        if (a.damage2) line += ' + ' + escHtml(a.damage2) + (a.dmgType2 ? ' ' + escHtml(a.dmgType2) : '');
+        if (a.range) line += ' (' + escHtml(a.range) + ')';
+        if (a.notes) line += '<br><span style="color:var(--dim);font-size:11px;">' + escHtml(a.notes) + '</span>';
+        return '<div class="preset-action-line">' + line + '</div>';
+      }).join('');
+      expandBlock = '<div class="init-expand">' +
+        (e.desc ? '<div class="preset-card-desc">' + escHtml(e.desc) + '</div>' : '') +
+        (actionsHtml ? '<div class="preset-card-section">' + actionsHtml + '</div>' : '') +
+      '</div>';
+    }
     return '<div class="init-row' + (active ? ' active-turn' : '') + '">' +
-      '<div><div class="init-row-name">' + (active ? '▶ ' : '') + escHtml(e.name) + '</div>' + statLine + '</div>' +
-      '<div style="display:flex;align-items:center;gap:8px;"><span class="init-badge">' + e.val + '</span>' +
+      '<div style="flex:1;min-width:0;"><div class="init-row-name">' + (active ? '▶ ' : '') + escHtml(e.name) + '</div>' + statLine + expandBlock + '</div>' +
+      '<div style="display:flex;align-items:flex-start;gap:8px;"><span class="init-badge">' + e.val + '</span>' +
       '<button class="mini-btn" onclick="removeInitEntry(' + i + ')">Remove</button></div></div>';
   }).join('');
 }
