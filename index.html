@@ -272,6 +272,17 @@ textarea { resize: vertical; min-height: 60px; }
 .batch-char-row:last-child { border-bottom: none; }
 .batch-char-row input { width: auto; }
 
+.preset-card { background: var(--panel2); border: 1px solid var(--border2); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 10px; }
+.preset-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 14px; }
+.preset-card-stats { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.preset-card-desc { font-size: 12px; color: var(--dim); margin-top: 6px; line-height: 1.5; }
+.preset-card-section { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border2); }
+.preset-action-line { font-size: 12px; color: var(--text); margin-bottom: 3px; }
+.preset-item-chip {
+  display: inline-block; font-size: 11px; background: var(--panel); border: 1px solid var(--border2);
+  border-radius: 99px; padding: 3px 9px; margin: 2px 4px 2px 0;
+}
+
 .token-note { font-size: 12px; color: var(--dim); line-height: 1.6; margin-top: 8px; }
 .token-saved { font-size: 12px; color: #7ac89a; margin-top: 6px; }
 </style>
@@ -394,6 +405,14 @@ textarea { resize: vertical; min-height: 60px; }
       <button class="btn btn-primary" onclick="nextInitTurn()">Next Turn</button>
       <button class="btn btn-secondary" onclick="clearInitList()">Clear All</button>
     </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Enemy &amp; NPC Presets</div>
+    <div class="hint" style="margin-top:0;">Build a monster once — give it HP, AC, an action, items — then reuse it, or just drop it into this encounter without saving anywhere.</div>
+    <button class="btn btn-primary" onclick="openEnemyPanel(null)">+ Create New Enemy</button>
+    <button class="btn btn-secondary" onclick="loadPresetLibrary()">Refresh Preset Library</button>
+    <div id="presetLibraryList" style="margin-top:12px;"></div>
   </div>
 </div>
 
@@ -534,6 +553,35 @@ textarea { resize: vertical; min-height: 60px; }
   <button class="btn btn-primary" id="transferBtn" onclick="doTransfer()">Transfer Item</button>
 </div>
 
+<div class="panel" id="panel-enemy">
+  <div class="panel-handle"></div>
+  <div class="panel-head"><div class="panel-title" id="enemyPanelTitle">Create Enemy / NPC</div><button class="icon-btn" onclick="closePanel()">✕</button></div>
+
+  <label>Name</label>
+  <input type="text" id="enemyName" placeholder="e.g. Scrap Hound">
+  <label>Description</label>
+  <textarea id="enemyDesc" placeholder="Flavor, behavior, anything useful mid-fight"></textarea>
+  <div class="row3">
+    <div><label>HP</label><input type="number" id="enemyHp" placeholder="20"></div>
+    <div><label>Max HP</label><input type="number" id="enemyMaxHp" placeholder="20"></div>
+    <div><label>AC</label><input type="number" id="enemyAc" placeholder="14"></div>
+  </div>
+
+  <div class="card-title">Actions</div>
+  <div id="enemyActionsList"></div>
+  <button class="btn btn-secondary" onclick="addEnemyActionRow()">+ Add Action</button>
+
+  <div class="card-title">Items</div>
+  <div id="enemyItemsList"></div>
+  <button class="btn btn-secondary" onclick="addItemToEnemy()">+ Add Item</button>
+
+  <label style="margin-top:16px;">Initiative (only used for "this encounter only")</label>
+  <input type="number" id="enemyInit" placeholder="e.g. 12">
+
+  <button class="btn btn-secondary" onclick="saveEnemyLocal()">Use for This Encounter Only</button>
+  <button class="btn btn-primary" id="saveEnemyPresetBtn" onclick="saveEnemyPreset()">Save as Preset</button>
+</div>
+
 <div class="panel" id="panel-batch">
   <div class="panel-handle"></div>
   <div class="panel-head"><div class="panel-title">Batch Action</div><button class="icon-btn" onclick="closePanel()">✕</button></div>
@@ -573,6 +621,7 @@ function esc(s) { return String(s).replace(/"/g,'&quot;'); }
 function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 var GH_OWNER = 'temmiemanz';
+var DM_REPO = 'Secret_Side_DM_Management'; // this tool's own repo — enemy presets live here, not in any character's mailbox
 var CHARACTERS = [
   { repo: 'Secret-Side_Sanguine', name: 'Sanguine / Tre',   color: '#c8182a' },
   { repo: 'Secret-Side_Sloan',    name: 'Sloan',             color: '#9b6dda' },
@@ -597,7 +646,11 @@ function showScreen(name) {
   $('topbarTitle').textContent = name === 'dashboard' ? charDisplayName(currentRepo) : 'Secret Side';
 }
 function goHome() { currentRepo = null; showScreen('home'); renderCharGrid(); }
-function goTools() { showScreen('tools'); }
+var presetLibraryLoadedOnce = false;
+function goTools() {
+  showScreen('tools');
+  if (!presetLibraryLoadedOnce) { presetLibraryLoadedOnce = true; loadPresetLibrary(); }
+}
 function openDashboard(repo) {
   currentRepo = repo;
   showScreen('dashboard');
@@ -612,6 +665,13 @@ function openPanel(name) {
   if (name === 'adjust') $('adjustTargetName').textContent = charDisplayName(currentRepo);
   if (name === 'transfer') prepTransferPanel();
   if (name === 'batch') prepBatchPanel();
+  if (name === 'enemy') renderEnemyPanelFromDraft();
+}
+function closeToPanel(name) {
+  // Like closePanel(), but immediately opens a different panel — used when
+  // bouncing between the enemy builder and the item-builder sub-flow.
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('open'); });
+  openPanel(name);
 }
 function closePanel() {
   document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('open'); });
@@ -738,25 +798,52 @@ function computeCurrentItems(mailbox) {
   });
   return items;
 }
+// Same idea for stats — walk every setStat/setLevel/setHp/setAC command in
+// order and keep the last value sent for each field. This is what actually
+// fixes "I can't see stats" — Known Info stops being just this device's
+// memory and starts reflecting everything ever sent to this character.
+function computeCurrentStats(mailbox) {
+  var stats = {};
+  (mailbox.commands || []).forEach(function(cmd) {
+    if (cmd.type === 'setStat' && cmd.stat) stats[cmd.stat] = cmd.value;
+    else if (cmd.type === 'setLevel') stats.level = cmd.value;
+    else if (cmd.type === 'setAC') stats.ac = cmd.value;
+    else if (cmd.type === 'setHp') {
+      if (cmd.current !== undefined) stats.hpCurrent = parseInt(cmd.current);
+      if (cmd.max !== undefined) stats.hpMax = parseInt(cmd.max);
+    }
+  });
+  return stats;
+}
 function renderItemsBox() {
   var reqRepo = currentRepo;
   $('itemsBoxBody').innerHTML = '<div class="box-empty">Checking their mailbox…</div>';
+  $('knownInfoBody').innerHTML = '<div class="box-empty">Checking their mailbox…</div>';
   fetchMailboxRaw(reqRepo, function(mailbox) {
     if (reqRepo !== currentRepo) return; // navigated away while this was in flight
     if (!mailbox) {
-      $('itemsBoxBody').innerHTML = '<div class="box-empty">Couldn\'t read their mailbox right now (check your token, or they may not have one yet).</div>';
+      var failMsg = '<div class="box-empty">Couldn\'t read their mailbox right now (check your token, or they may not have one yet).</div>';
+      $('itemsBoxBody').innerHTML = failMsg;
+      $('knownInfoBody').innerHTML = failMsg;
       return;
     }
+
     var items = computeCurrentItems(mailbox);
     liveItemsCache[reqRepo] = items;
-    if (!items.length) { $('itemsBoxBody').innerHTML = '<div class="box-empty">Nothing in their mailbox yet.</div>'; return; }
-    $('itemsBoxBody').innerHTML = items.map(function(it, i) {
-      return '<div class="item-row"><div class="item-row-main"><div class="item-row-name">' + escHtml(it.name) + '</div><div class="item-row-type">' + escHtml(it.type || '') + '</div></div>' +
-        '<div class="item-row-actions">' +
-          '<button class="mini-btn" onclick="editMailboxItem(\'' + reqRepo + '\',' + i + ')">Edit</button>' +
-          '<button class="mini-btn" onclick="startTransferFromMailboxItem(\'' + reqRepo + '\',' + i + ')">Transfer</button>' +
-        '</div></div>';
-    }).join('');
+    if (!items.length) { $('itemsBoxBody').innerHTML = '<div class="box-empty">Nothing in their mailbox yet.</div>'; }
+    else {
+      $('itemsBoxBody').innerHTML = items.map(function(it, i) {
+        return '<div class="item-row"><div class="item-row-main"><div class="item-row-name">' + escHtml(it.name) + '</div><div class="item-row-type">' + escHtml(it.type || '') + '</div></div>' +
+          '<div class="item-row-actions">' +
+            '<button class="mini-btn" onclick="editMailboxItem(\'' + reqRepo + '\',' + i + ')">Edit</button>' +
+            '<button class="mini-btn" onclick="startTransferFromMailboxItem(\'' + reqRepo + '\',' + i + ')">Transfer</button>' +
+          '</div></div>';
+      }).join('');
+    }
+
+    var stats = computeCurrentStats(mailbox);
+    Object.keys(stats).forEach(function(k) { setKnownInfo(reqRepo, k, stats[k]); });
+    renderKnownInfo();
   });
 }
 function editMailboxItem(repo, index) {
@@ -1192,9 +1279,16 @@ function sendToMailbox(repo, mutateFn, btn, successMsg, logDesc, itemForLog) {
     .finally(function() { btn.disabled = false; });
 }
 
+var itemFormMode = 'give'; // 'give' (normal) | 'enemy' (building an item to equip on an NPC in progress)
 function sendItem() {
   var item = buildItem();
   if (!item.name) { setStatus('Give the item a name first.', 'err'); return; }
+  if (itemFormMode === 'enemy') {
+    enemyDraft.items.push(item);
+    itemFormMode = 'give';
+    closeToPanel('enemy');
+    return;
+  }
   if (editingOriginalName) {
     var cmd = { cmdId: 'c' + Date.now() + Math.floor(Math.random()*10000), type: 'editItem', matchName: editingOriginalName, item: item };
     var originalName = editingOriginalName;
@@ -1422,6 +1516,238 @@ function doBatchAction() {
   });
   if (repos.indexOf(currentRepo) !== -1) renderKnownInfo();
   $('batchResultHint').textContent = 'Sent to ' + repos.length + ' character' + (repos.length>1?'s':'') + '.';
+}
+
+/* ══════════════ ENEMY / NPC BUILDER + PRESET LIBRARY ══════════════ */
+// Presets live in this tool's OWN repo (enemy-presets.json), not in any
+// character's mailbox — they aren't tied to a specific player.
+var enemyDraft = null;
+var editingEnemyId = null;
+
+function openEnemyPanel(existingPreset) {
+  if (existingPreset) {
+    enemyDraft = JSON.parse(JSON.stringify(existingPreset));
+    editingEnemyId = existingPreset.id;
+  } else {
+    enemyDraft = { id: 'enemy_' + Date.now() + Math.floor(Math.random()*10000), name: '', desc: '', hp: '', maxHp: '', ac: '', actions: [], items: [] };
+    editingEnemyId = null;
+  }
+  openPanel('enemy');
+}
+function renderEnemyPanelFromDraft() {
+  $('enemyPanelTitle').textContent = editingEnemyId ? 'Edit Enemy / NPC' : 'Create Enemy / NPC';
+  $('enemyName').value = enemyDraft.name || '';
+  $('enemyDesc').value = enemyDraft.desc || '';
+  $('enemyHp').value = enemyDraft.hp || '';
+  $('enemyMaxHp').value = enemyDraft.maxHp || '';
+  $('enemyAc').value = enemyDraft.ac || '';
+  $('enemyActionsList').innerHTML = '';
+  if (enemyDraft.actions && enemyDraft.actions.length) enemyDraft.actions.forEach(function(a){ addEnemyActionRow(a); });
+  else addEnemyActionRow();
+  renderEnemyItemsList();
+  $('saveEnemyPresetBtn').textContent = editingEnemyId ? 'Update Preset' : 'Save as Preset';
+}
+function captureEnemyFormIntoDraft() {
+  enemyDraft.name = $('enemyName').value;
+  enemyDraft.desc = $('enemyDesc').value;
+  enemyDraft.hp = $('enemyHp').value;
+  enemyDraft.maxHp = $('enemyMaxHp').value;
+  enemyDraft.ac = $('enemyAc').value;
+  enemyDraft.actions = buildEnemyActions();
+}
+function addEnemyActionRow(data) {
+  data = data || {};
+  var row = document.createElement('div');
+  row.className = 'action-row enemy-action-row';
+  row.innerHTML =
+    '<button type="button" class="action-rm" onclick="this.parentElement.remove()">&#x2715;</button>' +
+    '<div class="action-row-title">Action</div>' +
+    '<label>Name</label><input type="text" class="ea-name" placeholder="Bite" value="'+esc(data.name||'')+'">' +
+    '<div class="row3">' +
+      '<div><label>Damage</label><input type="text" class="ea-dmg" placeholder="1d6+2" value="'+esc(data.damage||'')+'"></div>' +
+      '<div><label>Type</label><input type="text" class="ea-type" placeholder="Slashing" value="'+esc(data.dmgType||'')+'"></div>' +
+      '<div><label>Range</label><input type="text" class="ea-range" placeholder="5 ft" value="'+esc(data.range||'')+'"></div>' +
+    '</div>' +
+    '<div class="row2">' +
+      '<div><label>+ Extra Damage</label><input type="text" class="ea-dmg2" placeholder="e.g. 10" value="'+esc(data.damage2||'')+'"></div>' +
+      '<div><label>Extra Type</label><input type="text" class="ea-type2" placeholder="Solid" value="'+esc(data.dmgType2||'')+'"></div>' +
+    '</div>' +
+    '<label>Notes</label><input type="text" class="ea-notes" placeholder="Additional notes..." value="'+esc(data.notes||'')+'">';
+  $('enemyActionsList').appendChild(row);
+}
+function buildEnemyActions() {
+  var actions = [];
+  document.querySelectorAll('#enemyActionsList .enemy-action-row').forEach(function(row) {
+    var name = row.querySelector('.ea-name').value.trim();
+    if (!name) return;
+    actions.push({
+      name: name, damage: row.querySelector('.ea-dmg').value.trim(), dmgType: row.querySelector('.ea-type').value.trim(),
+      range: row.querySelector('.ea-range').value.trim(), damage2: row.querySelector('.ea-dmg2').value.trim(),
+      dmgType2: row.querySelector('.ea-type2').value.trim(), notes: row.querySelector('.ea-notes').value.trim()
+    });
+  });
+  return actions;
+}
+function renderEnemyItemsList() {
+  var wrap = $('enemyItemsList');
+  if (!enemyDraft.items || !enemyDraft.items.length) { wrap.innerHTML = '<div class="box-empty">No items yet.</div>'; return; }
+  wrap.innerHTML = enemyDraft.items.map(function(it, i) {
+    return '<div class="item-row"><div class="item-row-main"><div class="item-row-name">'+escHtml(it.name)+'</div><div class="item-row-type">'+escHtml(it.type||'')+'</div></div>'+
+      '<div class="item-row-actions"><button class="mini-btn" onclick="removeItemFromEnemy('+i+')">Remove</button></div></div>';
+  }).join('');
+}
+function removeItemFromEnemy(i) { enemyDraft.items.splice(i, 1); renderEnemyItemsList(); }
+function addItemToEnemy() {
+  captureEnemyFormIntoDraft();
+  editingOriginalName = null;
+  itemFormMode = 'enemy';
+  closeToPanel('give');
+}
+function saveEnemyLocal() {
+  captureEnemyFormIntoDraft();
+  if (!enemyDraft.name.trim()) { setStatus('Name the enemy first.', 'err'); return; }
+  var initVal = parseInt($('enemyInit').value);
+  initEntries.push({
+    name: enemyDraft.name, val: isNaN(initVal) ? 0 : initVal,
+    hp: parseInt(enemyDraft.hp) || 0, maxHp: parseInt(enemyDraft.maxHp || enemyDraft.hp) || 0,
+    ac: enemyDraft.ac !== '' ? parseInt(enemyDraft.ac) : undefined
+  });
+  initEntries.sort(function(a,b){ return b.val - a.val; });
+  saveInit(); renderInit();
+  setStatus('"' + enemyDraft.name + '" added to the Initiative Tracker for this encounter.', 'ok');
+  closePanel();
+}
+
+function fetchPresetsRaw(cb) {
+  var token = localStorage.getItem('secret_side_sender_token');
+  var headers = { 'Accept': 'application/vnd.github+json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  fetch('https://api.github.com/repos/' + GH_OWNER + '/' + DM_REPO + '/contents/enemy-presets.json', { headers: headers })
+    .then(function(r) {
+      if (r.status === 404) return { notFound: true };
+      if (!r.ok) return null;
+      return r.json();
+    })
+    .then(function(data) {
+      if (!data) { cb(null, null); return; }
+      if (data.notFound) { cb({ presets: [] }, null); return; }
+      try { cb(JSON.parse(b64DecodeUnicode(data.content.replace(/\n/g, ''))), data.sha); }
+      catch (e) { cb({ presets: [] }, data.sha); }
+    })
+    .catch(function(){ cb(null, null); });
+}
+function writePresetsRaw(presetsObj, sha, cb) {
+  var token = localStorage.getItem('secret_side_sender_token');
+  if (!token) { cb(new Error('No GitHub token saved — tap ⚙ above.')); return; }
+  var headers = { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' };
+  var body = { message: 'Update enemy presets', content: b64EncodeUnicode(JSON.stringify(presetsObj, null, 2)) };
+  if (sha) body.sha = sha;
+  fetch('https://api.github.com/repos/' + GH_OWNER + '/' + DM_REPO + '/contents/enemy-presets.json', {
+    method: 'PUT', headers: headers, body: JSON.stringify(body)
+  })
+    .then(function(r) {
+      if (!r.ok) return r.json().then(function(e){ throw new Error(e.message || ('Write failed: status ' + r.status)); });
+      cb(null);
+    })
+    .catch(function(err){ cb(err); });
+}
+function saveEnemyPreset() {
+  captureEnemyFormIntoDraft();
+  if (!enemyDraft.name.trim()) { setStatus('Name the enemy first.', 'err'); return; }
+  $('saveEnemyPresetBtn').disabled = true;
+  setStatus('Saving preset…', 'busy');
+  fetchPresetsRaw(function(data, sha) {
+    if (!data) { setStatus('Could not reach GitHub — check your token.', 'err'); $('saveEnemyPresetBtn').disabled = false; return; }
+    var presets = data.presets || [];
+    var idx = editingEnemyId ? presets.findIndex(function(p){ return p.id === editingEnemyId; }) : -1;
+    if (idx !== -1) presets[idx] = enemyDraft; else presets.push(enemyDraft);
+    writePresetsRaw({ presets: presets }, sha, function(err) {
+      $('saveEnemyPresetBtn').disabled = false;
+      if (err) { setStatus('Failed: ' + err.message, 'err'); return; }
+      setStatus('"' + enemyDraft.name + '" saved as a preset.', 'ok');
+      editingEnemyId = enemyDraft.id;
+      closePanel();
+      loadPresetLibrary();
+    });
+  });
+}
+var presetLibraryCache = [];
+function loadPresetLibrary() {
+  $('presetLibraryList').innerHTML = '<div class="box-empty">Loading…</div>';
+  fetchPresetsRaw(function(data) {
+    if (!data) { $('presetLibraryList').innerHTML = '<div class="box-empty">Couldn\'t load presets (check your token).</div>'; return; }
+    presetLibraryCache = data.presets || [];
+    renderPresetLibrary();
+  });
+}
+function renderPresetLibrary() {
+  var wrap = $('presetLibraryList');
+  if (!presetLibraryCache.length) { wrap.innerHTML = '<div class="box-empty">No saved presets yet.</div>'; return; }
+  wrap.innerHTML = presetLibraryCache.map(function(p) {
+    var actionsHtml = (p.actions || []).map(function(a) {
+      return '<div class="preset-action-line">' + escHtml(a.name) + (a.damage ? ' — ' + escHtml(a.damage) + (a.dmgType ? ' ' + escHtml(a.dmgType) : '') : '') + (a.range ? ' (' + escHtml(a.range) + ')' : '') + '</div>';
+    }).join('');
+    var itemsHtml = (p.items || []).map(function(it) { return '<span class="preset-item-chip">' + escHtml(it.name) + '</span>'; }).join('');
+    return '<div class="preset-card">' +
+      '<div class="preset-card-head"><b>' + escHtml(p.name) + '</b><span class="preset-card-stats">HP ' + escHtml(String(p.hp || '—')) + ' · AC ' + escHtml(String(p.ac || '—')) + '</span></div>' +
+      (p.desc ? '<div class="preset-card-desc">' + escHtml(p.desc) + '</div>' : '') +
+      (actionsHtml ? '<div class="preset-card-section">' + actionsHtml + '</div>' : '') +
+      (itemsHtml ? '<div class="preset-card-section">' + itemsHtml + '</div>' : '') +
+      '<div class="item-row-actions" style="margin-top:8px;">' +
+        '<button class="mini-btn" onclick="editPresetLocal(\'' + p.id + '\')">Edit</button>' +
+        '<button class="mini-btn" onclick="duplicatePreset(\'' + p.id + '\')">Duplicate</button>' +
+        '<button class="mini-btn" onclick="quickFillInitiative(\'' + p.id + '\')">Add to Initiative</button>' +
+        '<button class="mini-btn" onclick="deletePreset(\'' + p.id + '\')">Delete</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+function editPresetLocal(id) {
+  var preset = presetLibraryCache.find(function(p){ return p.id === id; });
+  if (!preset) return;
+  openEnemyPanel(preset);
+}
+function duplicatePreset(id) {
+  setStatus('Duplicating…', 'busy');
+  fetchPresetsRaw(function(data, sha) {
+    if (!data) { setStatus('Could not reach GitHub.', 'err'); return; }
+    var presets = data.presets || [];
+    var orig = presets.find(function(p){ return p.id === id; });
+    if (!orig) { setStatus('Could not find that preset anymore — try refreshing.', 'err'); return; }
+    var copy = JSON.parse(JSON.stringify(orig));
+    copy.id = 'enemy_' + Date.now() + Math.floor(Math.random()*10000);
+    copy.name = copy.name + ' (Copy)';
+    presets.push(copy);
+    writePresetsRaw({ presets: presets }, sha, function(err) {
+      if (err) { setStatus('Failed: ' + err.message, 'err'); return; }
+      setStatus('Duplicated "' + orig.name + '".', 'ok');
+      loadPresetLibrary();
+    });
+  });
+}
+function deletePreset(id) {
+  if (!confirm('Delete this preset? This can\'t be undone.')) return;
+  setStatus('Deleting…', 'busy');
+  fetchPresetsRaw(function(data, sha) {
+    if (!data) { setStatus('Could not reach GitHub.', 'err'); return; }
+    var presets = (data.presets || []).filter(function(p){ return p.id !== id; });
+    writePresetsRaw({ presets: presets }, sha, function(err) {
+      if (err) { setStatus('Failed: ' + err.message, 'err'); return; }
+      setStatus('Preset deleted.', 'ok');
+      loadPresetLibrary();
+    });
+  });
+}
+function quickFillInitiative(id) {
+  var preset = presetLibraryCache.find(function(p){ return p.id === id; });
+  if (!preset) return;
+  $('initName').value = preset.name;
+  $('initIsMonster').checked = true;
+  toggleInitMonsterFields();
+  $('initHp').value = preset.hp || '';
+  $('initAc').value = preset.ac || '';
+  $('initValue').focus();
+  setStatus('Filled in below — add their initiative roll and tap "+ Add Combatant".', 'ok');
 }
 
 /* ══════════════ TOOLS: random target, dice, initiative ══════════════ */
