@@ -19,6 +19,35 @@
         }
       ],
       "items": []
+    },
+    {
+      "id": "enemy_17909453885431899",
+      "name": "Vine Guardian ",
+      "desc": "A humanoid made of tangled vines that quickly sprouts from any nearby vine connected to the heart. It can untangle itself, wrap around a target, then retangle to trap them",
+      "hp": "6",
+      "maxHp": "6",
+      "ac": "10",
+      "actions": [
+        {
+          "name": "Lunge",
+          "damage": "1d6",
+          "dmgType": "Blunt",
+          "range": "30ft",
+          "damage2": "",
+          "dmgType2": "",
+          "notes": "Make a huge leap forward to attack a target."
+        },
+        {
+          "name": "Encase",
+          "damage": "0",
+          "dmgType": "Binding",
+          "range": "5ft",
+          "damage2": "",
+          "dmgType2": "",
+          "notes": "Wrap yourself around an enemy to trap them inside yourself. causing an instant immobile effect which can be removed within one turn otherwise you run off with the person inside you."
+        }
+      ],
+      "items": []
     }
   ]
 }
