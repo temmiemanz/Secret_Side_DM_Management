@@ -159,6 +159,17 @@ textarea { resize: vertical; min-height: 60px; }
 .known-stat-label { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.06em; }
 .known-stat-val { font-size: 14px; font-weight: 700; color: var(--text); }
 
+.hp-quick-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.hp-quick-btn {
+  width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border2); background: var(--panel2);
+  font-size: 18px; font-weight: 700; cursor: pointer; font-family: inherit; flex-shrink: 0;
+}
+.hp-quick-btn.dmg  { color: var(--red); }
+.hp-quick-btn.heal { color: var(--green); }
+.hp-quick-btn:hover { border-color: currentColor; }
+#hpQuickAmt { width: 52px; text-align: center; padding: 6px 4px; flex-shrink: 0; }
+.hp-quick-val { font-size: 18px; font-weight: 700; color: var(--text); margin-left: auto; }
+
 .item-row, .log-row {
   display: flex; justify-content: space-between; align-items: center; gap: 8px;
   padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px;
@@ -252,6 +263,14 @@ textarea { resize: vertical; min-height: 60px; }
 .init-row.active-turn { background: rgba(200,168,75,0.08); border-radius: 6px; }
 .init-row-name { display: flex; align-items: center; gap: 6px; }
 .init-badge { font-family: inherit; font-weight: 700; color: var(--accent); font-size: 12px; min-width: 22px; text-align: right; }
+.init-stat-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.init-hp-val { font-size: 11px; color: var(--muted); }
+.init-ac-val { font-size: 11px; color: var(--dim); margin-left: 4px; }
+
+.batch-char-list { display: flex; flex-direction: column; gap: 2px; background: var(--input); border: 1px solid var(--border2); border-radius: var(--radius); padding: 6px 10px; max-height: 220px; overflow-y: auto; }
+.batch-char-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.batch-char-row:last-child { border-bottom: none; }
+.batch-char-row input { width: auto; }
 
 .token-note { font-size: 12px; color: var(--dim); line-height: 1.6; margin-top: 8px; }
 .token-saved { font-size: 12px; color: #7ac89a; margin-top: 6px; }
@@ -357,10 +376,17 @@ textarea { resize: vertical; min-height: 60px; }
 
   <div class="card">
     <div class="card-title">Initiative Tracker</div>
-    <div class="hint" style="margin-top:0;">Local to this device for the current session.</div>
+    <div class="hint" style="margin-top:0;">Local to this device for the current session. Players track their own HP on their own sheet — this is mainly for monsters and NPCs that don't have one.</div>
     <div class="row2">
       <input type="text" id="initName" placeholder="Name">
       <input type="number" id="initValue" placeholder="Initiative">
+    </div>
+    <div class="check-row"><input type="checkbox" id="initIsMonster" onchange="toggleInitMonsterFields()"><label for="initIsMonster">Monster / NPC (track HP &amp; AC here)</label></div>
+    <div id="initMonsterFields" style="display:none;">
+      <div class="row2">
+        <div><label>HP</label><input type="number" id="initHp" placeholder="e.g. 20"></div>
+        <div><label>AC</label><input type="number" id="initAc" placeholder="e.g. 14"></div>
+      </div>
     </div>
     <button class="btn btn-secondary" onclick="addInitEntry()">+ Add Combatant</button>
     <div id="initList" style="margin-top:12px;"></div>
@@ -375,6 +401,7 @@ textarea { resize: vertical; min-height: 60px; }
   <button id="navBtn-home" class="active" onclick="goHome()"><span class="ic">🏠</span>Home</button>
   <button id="navBtn-tools" onclick="goTools()"><span class="ic">🎲</span>Tools</button>
   <button id="navBtn-transfer" onclick="openPanel('transfer')"><span class="ic">⇄</span>Transfer</button>
+  <button id="navBtn-batch" onclick="openPanel('batch')"><span class="ic">⚡</span>Batch</button>
 </div>
 
 <!-- ═══ PANELS ═══ -->
@@ -507,6 +534,39 @@ textarea { resize: vertical; min-height: 60px; }
   <button class="btn btn-primary" id="transferBtn" onclick="doTransfer()">Transfer Item</button>
 </div>
 
+<div class="panel" id="panel-batch">
+  <div class="panel-handle"></div>
+  <div class="panel-head"><div class="panel-title">Batch Action</div><button class="icon-btn" onclick="closePanel()">✕</button></div>
+  <div class="hint" style="margin-top:0;">Apply one change to several characters at once — an AOE hit, a level-up after a session, everyone recovering together.</div>
+
+  <label>Characters</label>
+  <div class="batch-char-list" id="batchCharList"></div>
+  <div class="row2" style="margin-top:6px;">
+    <button type="button" class="mini-btn" onclick="batchSelectAll(true)">Select All</button>
+    <button type="button" class="mini-btn" onclick="batchSelectAll(false)">Select None</button>
+  </div>
+
+  <label>Action</label>
+  <select id="batchAction" onchange="onBatchActionChange()">
+    <option value="damage">Damage HP</option>
+    <option value="heal">Heal HP</option>
+    <option value="level">Set Level</option>
+    <option value="effect">Add Status Effect</option>
+  </select>
+
+  <div id="batchAmountWrap">
+    <label id="batchAmountLabel">Amount</label>
+    <input type="text" id="batchAmount" placeholder="e.g. 5">
+  </div>
+  <div id="batchEffectWrap" style="display:none;">
+    <label>Effect Name</label>
+    <input type="text" id="batchEffectName" placeholder="e.g. Poison">
+  </div>
+
+  <button class="btn btn-primary" id="batchBtn" onclick="doBatchAction()">Apply to Selected</button>
+  <div class="hint" id="batchResultHint"></div>
+</div>
+
 <script>
 function $(id) { return document.getElementById(id); }
 function esc(s) { return String(s).replace(/"/g,'&quot;'); }
@@ -551,6 +611,7 @@ function openPanel(name) {
   if (name === 'give') prepGivePanel();
   if (name === 'adjust') $('adjustTargetName').textContent = charDisplayName(currentRepo);
   if (name === 'transfer') prepTransferPanel();
+  if (name === 'batch') prepBatchPanel();
 }
 function closePanel() {
   document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('open'); });
@@ -599,13 +660,41 @@ function setKnownInfo(repo, field, value) {
 }
 function renderKnownInfo() {
   var info = getKnownInfo(currentRepo);
-  var fields = [['level','Level'],['str','STR'],['mnd','MND'],['sol','SOL'],['def','DEF'],['hp','HP'],['ac','AC Override']];
-  var any = fields.some(function(f){ return info[f[0]] !== undefined; });
+  var otherFields = [['level','Level'],['str','STR'],['mnd','MND'],['sol','SOL'],['def','DEF'],['ac','AC Override']];
+  var hasHp = info.hpCurrent !== undefined;
+  var any = hasHp || otherFields.some(function(f){ return info[f[0]] !== undefined; });
   if (!any) { $('knownInfoBody').innerHTML = '<div class="box-empty">Nothing sent yet — use Edit to set stats, level, or HP.</div>'; return; }
-  $('knownInfoBody').innerHTML = '<div class="known-grid">' + fields.map(function(f) {
+
+  var html = '';
+  if (hasHp) {
+    html += '<div class="hp-quick-row">' +
+      '<button class="hp-quick-btn dmg" id="hpQuickDmgBtn" onclick="quickAdjustHp(-1)">−</button>' +
+      '<input type="number" id="hpQuickAmt" value="1" min="1">' +
+      '<button class="hp-quick-btn heal" id="hpQuickHealBtn" onclick="quickAdjustHp(1)">+</button>' +
+      '<span class="hp-quick-val">' + escHtml(String(info.hpCurrent)) + (info.hpMax !== undefined ? ' / ' + escHtml(String(info.hpMax)) : '') + '</span>' +
+    '</div>';
+  }
+  html += '<div class="known-grid">' + otherFields.map(function(f) {
     if (info[f[0]] === undefined) return '';
     return '<div class="known-stat"><span class="known-stat-label">' + f[1] + '</span><span class="known-stat-val">' + escHtml(String(info[f[0]])) + '</span></div>';
   }).join('') + '</div>';
+  $('knownInfoBody').innerHTML = html;
+}
+function quickAdjustHp(sign) {
+  var info = getKnownInfo(currentRepo);
+  if (info.hpCurrent === undefined) return;
+  var amt = parseInt($('hpQuickAmt').value) || 1;
+  var newVal = info.hpCurrent + (sign * amt);
+  if (newVal < 0) newVal = 0;
+  if (info.hpMax !== undefined && newVal > info.hpMax) newVal = info.hpMax;
+  var cmd = { cmdId: 'c' + Date.now() + Math.floor(Math.random()*10000), type: 'setHp', current: newVal };
+  var repo = currentRepo;
+  var btn = sign > 0 ? $('hpQuickHealBtn') : $('hpQuickDmgBtn');
+  sendToMailbox(repo, function(mailbox) { mailbox.commands.push(cmd); }, btn,
+    'HP set to ' + newVal + (info.hpMax !== undefined ? ('/' + info.hpMax) : '') + '. Applies next time their sheet loads.',
+    (sign > 0 ? 'Healed ' : 'Damaged ') + amt + ' HP (now ' + newVal + ')');
+  setKnownInfo(repo, 'hpCurrent', newVal);
+  renderKnownInfo();
 }
 
 // ── ITEMS BOX — reads the character's actual mailbox file on GitHub, so it
@@ -1134,8 +1223,10 @@ function sendStatChange() {
   else { cmd.type = 'setStat'; cmd.stat = field; cmd.value = val; desc = 'Set ' + field.toUpperCase() + ' to ' + val; }
   var repo = currentRepo;
   sendToMailbox(repo, function(mailbox) { mailbox.commands.push(cmd); }, $('adjBtn'), desc + '. It\'ll apply next time their sheet loads.', desc);
-  if (field === 'hp') { setKnownInfo(repo, 'hp', val + ($('adjHpMax').value.trim() ? ('/' + $('adjHpMax').value.trim()) : '')); }
-  else { setKnownInfo(repo, field, val); }
+  if (field === 'hp') {
+    setKnownInfo(repo, 'hpCurrent', parseInt(val));
+    if ($('adjHpMax').value.trim() !== '') setKnownInfo(repo, 'hpMax', parseInt($('adjHpMax').value.trim()));
+  } else { setKnownInfo(repo, field, val); }
   renderKnownInfo();
 }
 function sendRemoval() {
@@ -1261,6 +1352,78 @@ function doTransfer() {
   closePanel();
 }
 
+/* ══════════════ BATCH ACTIONS — one change, several characters at once ══════════════ */
+function prepBatchPanel() {
+  $('batchCharList').innerHTML = CHARACTERS.map(function(c) {
+    var checked = c.repo === currentRepo ? 'checked' : '';
+    return '<label class="batch-char-row"><input type="checkbox" class="batch-char-cb" value="' + c.repo + '" ' + checked + '>' + escHtml(c.name) + '</label>';
+  }).join('');
+  onBatchActionChange();
+  $('batchResultHint').textContent = '';
+}
+function batchSelectAll(state) {
+  document.querySelectorAll('.batch-char-cb').forEach(function(cb){ cb.checked = state; });
+}
+function onBatchActionChange() {
+  var action = $('batchAction').value;
+  $('batchEffectWrap').style.display = action === 'effect' ? 'block' : 'none';
+  $('batchAmountWrap').style.display = action === 'effect' ? 'none' : 'block';
+  var labels = { damage: 'Damage Amount', heal: 'Heal Amount', level: 'New Level' };
+  $('batchAmountLabel').textContent = labels[action] || 'Amount';
+  $('batchAmount').placeholder = action === 'level' ? 'e.g. 3' : 'e.g. 5';
+}
+function doBatchAction() {
+  var repos = Array.prototype.slice.call(document.querySelectorAll('.batch-char-cb:checked')).map(function(cb){ return cb.value; });
+  if (!repos.length) { setStatus('Pick at least one character first.', 'err'); return; }
+  var action = $('batchAction').value;
+
+  if (action === 'effect') {
+    var effName = $('batchEffectName').value.trim();
+    if (!effName) { setStatus('Name the effect first.', 'err'); return; }
+    var store = getEffectsStore();
+    repos.forEach(function(repo) {
+      if (!store[repo]) store[repo] = {};
+      store[repo][effName] = (store[repo][effName] || 0) + 1;
+    });
+    saveEffectsStore(store);
+    if (repos.indexOf(currentRepo) !== -1) renderEffectChips();
+    renderCharGrid();
+    $('batchResultHint').textContent = 'Added "' + effName + '" to ' + repos.length + ' character' + (repos.length>1?'s':'') + '.';
+    return;
+  }
+
+  var token = localStorage.getItem('secret_side_sender_token');
+  if (!token) { setStatus('Save your GitHub token first (tap ⚙ above).', 'err'); return; }
+  var amt = $('batchAmount').value.trim();
+  if (amt === '') { setStatus('Enter an amount first.', 'err'); return; }
+
+  repos.forEach(function(repo) {
+    var cmd = { cmdId: 'c' + Date.now() + Math.floor(Math.random()*10000) + '-' + repo };
+    var desc;
+    if (action === 'level') { cmd.type = 'setLevel'; cmd.value = amt; desc = 'Batch: set Level to ' + amt; }
+    else {
+      var info = getKnownInfo(repo);
+      var cur = info.hpCurrent !== undefined ? info.hpCurrent : null;
+      if (cur !== null) {
+        var delta = (action === 'damage' ? -1 : 1) * (parseInt(amt) || 0);
+        var newVal = cur + delta;
+        if (newVal < 0) newVal = 0;
+        if (info.hpMax !== undefined && newVal > info.hpMax) newVal = info.hpMax;
+        cmd.type = 'setHp'; cmd.current = newVal;
+        setKnownInfo(repo, 'hpCurrent', newVal);
+      } else {
+        // No known HP yet for this character — send the raw amount as their new current HP.
+        cmd.type = 'setHp'; cmd.current = amt;
+        setKnownInfo(repo, 'hpCurrent', parseInt(amt));
+      }
+      desc = 'Batch: ' + (action === 'damage' ? 'damaged ' : 'healed ') + amt + ' HP';
+    }
+    sendToMailbox(repo, function(mailbox) { mailbox.commands.push(cmd); }, $('batchBtn'), desc + ' (' + charDisplayName(repo) + ').', desc);
+  });
+  if (repos.indexOf(currentRepo) !== -1) renderKnownInfo();
+  $('batchResultHint').textContent = 'Sent to ' + repos.length + ' character' + (repos.length>1?'s':'') + '.';
+}
+
 /* ══════════════ TOOLS: random target, dice, initiative ══════════════ */
 function loadPartyList() {
   var saved; try { saved = JSON.parse(localStorage.getItem('secret_side_party_list')); } catch(e) {}
@@ -1298,24 +1461,48 @@ function loadInit() {
   renderInit();
 }
 function saveInit() { try { localStorage.setItem('secret_side_init', JSON.stringify({ entries: initEntries, turn: initTurn })); } catch(e) {} }
+function toggleInitMonsterFields() { $('initMonsterFields').style.display = $('initIsMonster').checked ? 'block' : 'none'; }
 function addInitEntry() {
   var name = $('initName').value.trim(); var val = parseInt($('initValue').value);
   if (!name || isNaN(val)) return;
-  initEntries.push({ name: name, val: val });
+  var entry = { name: name, val: val };
+  if ($('initIsMonster').checked) {
+    var hp = parseInt($('initHp').value);
+    var ac = parseInt($('initAc').value);
+    if (!isNaN(hp)) { entry.hp = hp; entry.maxHp = hp; }
+    if (!isNaN(ac)) entry.ac = ac;
+  }
+  initEntries.push(entry);
   initEntries.sort(function(a,b){ return b.val - a.val; });
-  $('initName').value = ''; $('initValue').value = '';
+  $('initName').value = ''; $('initValue').value = ''; $('initHp').value = ''; $('initAc').value = '';
   saveInit(); renderInit();
 }
 function removeInitEntry(i) { initEntries.splice(i, 1); if (initTurn >= initEntries.length) initTurn = 0; saveInit(); renderInit(); }
 function nextInitTurn() { if (!initEntries.length) return; initTurn = (initTurn + 1) % initEntries.length; saveInit(); renderInit(); }
 function clearInitList() { initEntries = []; initTurn = 0; saveInit(); renderInit(); }
+function adjustInitHp(i, delta) {
+  var e = initEntries[i]; if (!e || e.hp === undefined) return;
+  e.hp += delta;
+  if (e.hp < 0) e.hp = 0;
+  if (e.maxHp !== undefined && e.hp > e.maxHp) e.hp = e.maxHp;
+  saveInit(); renderInit();
+}
 function renderInit() {
   var wrap = $('initList');
   if (!initEntries.length) { wrap.innerHTML = '<div class="hint" style="margin-top:0;">No combatants added yet.</div>'; return; }
   wrap.innerHTML = initEntries.map(function(e, i) {
     var active = initEntries.length && i === (initTurn % initEntries.length);
+    var statLine = '';
+    if (e.hp !== undefined) {
+      statLine = '<div class="init-stat-row">' +
+        '<button class="hp-quick-btn dmg" style="width:24px;height:24px;font-size:13px;" onclick="adjustInitHp(' + i + ',-1)">−</button>' +
+        '<span class="init-hp-val">' + e.hp + (e.maxHp !== undefined ? '/' + e.maxHp : '') + ' HP</span>' +
+        '<button class="hp-quick-btn heal" style="width:24px;height:24px;font-size:13px;" onclick="adjustInitHp(' + i + ',1)">+</button>' +
+        (e.ac !== undefined ? '<span class="init-ac-val">AC ' + e.ac + '</span>' : '') +
+      '</div>';
+    }
     return '<div class="init-row' + (active ? ' active-turn' : '') + '">' +
-      '<div class="init-row-name">' + (active ? '▶ ' : '') + escHtml(e.name) + '</div>' +
+      '<div><div class="init-row-name">' + (active ? '▶ ' : '') + escHtml(e.name) + '</div>' + statLine + '</div>' +
       '<div style="display:flex;align-items:center;gap:8px;"><span class="init-badge">' + e.val + '</span>' +
       '<button class="mini-btn" onclick="removeInitEntry(' + i + ')">Remove</button></div></div>';
   }).join('');
