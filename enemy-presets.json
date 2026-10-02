@@ -1,0 +1,24 @@
+{
+  "presets": [
+    {
+      "id": "enemy_17909452756935653",
+      "name": "Vine Tendril",
+      "desc": "A singular vine that is under control by the Vine Princess.\n\nShares initiative with all other Vine Tendrils.\n\nIf a target gets hit then another party member must attack it to free them, removing one token. They can also attack once the target is immobile to free them fully.  ",
+      "hp": "1",
+      "maxHp": "1",
+      "ac": "6",
+      "actions": [
+        {
+          "name": "Tangle",
+          "damage": "0",
+          "dmgType": "",
+          "range": "15ft",
+          "damage2": "",
+          "dmgType2": "Binding",
+          "notes": "Zero damage, but once used on target (and hit) then add a Wrapped Token, once three Wrapped Tokens are accumulated the target is immobile. After one turn of being immobile the target gets dragged away."
+        }
+      ],
+      "items": []
+    }
+  ]
+}
