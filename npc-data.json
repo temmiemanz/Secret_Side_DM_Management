@@ -1,0 +1,19 @@
+{
+  "npcs": [
+    {
+      "id": "npc_17909973707063956",
+      "name": "Cobbled 1",
+      "desc": "test cobbled for Camille ",
+      "level": "1",
+      "hp": 4,
+      "maxHp": 4,
+      "str": "8",
+      "mnd": "4",
+      "sol": "10",
+      "def": "10",
+      "ac": "10",
+      "items": [],
+      "effects": {}
+    }
+  ]
+}
