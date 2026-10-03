@@ -124,6 +124,11 @@ textarea { resize: vertical; min-height: 60px; }
 .char-card-link:hover { border-color: var(--card-color); color: var(--card-color); }
 
 .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin: 18px 0 8px; }
+.dm-only-tag {
+  display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  background: rgba(200,168,75,0.12); color: var(--accent); border: 1px solid rgba(200,168,75,0.3);
+  border-radius: 99px; padding: 2px 8px; margin-left: 6px; vertical-align: middle;
+}
 .section-title:first-child { margin-top: 0; }
 
 /* ── DASHBOARD ── */
@@ -304,6 +309,11 @@ textarea { resize: vertical; min-height: 60px; }
 <div class="screen active" id="screen-home">
   <div class="section-title">Characters</div>
   <div class="char-grid" id="charGrid"></div>
+
+  <div class="section-title">Party NPCs <span class="dm-only-tag">DM Only</span></div>
+  <div class="hint" style="margin-top:0;">Companions traveling with the party — never visible to players, saved to your own repo.</div>
+  <div class="char-grid" id="npcGrid"></div>
+  <button class="btn btn-secondary" onclick="openNpcEditor(null)">+ Add Party NPC</button>
 </div>
 
 <!-- ═══ DASHBOARD ═══ -->
@@ -351,6 +361,50 @@ textarea { resize: vertical; min-height: 60px; }
     <div class="box">
       <div class="box-head"><span>Activity Log</span></div>
       <div class="box-body" id="logBoxBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ NPC DASHBOARD — same shape as a character's, but everything saves instantly (no mailbox, no deploy wait), since nothing else ever reads this data ═══ -->
+<div class="screen" id="screen-npc-dashboard">
+  <div class="dash-header">
+    <div class="dash-name" id="npcDashName">—</div>
+    <span class="dm-only-tag">DM Only</span>
+  </div>
+
+  <div class="dash-grid">
+    <div class="box">
+      <div class="box-head"><span>Info</span><button class="box-action" onclick="openNpcEditor(currentNpcId)">Edit</button></div>
+      <div class="box-body" id="npcInfoBody"></div>
+    </div>
+
+    <div class="box">
+      <div class="box-head"><span>Status Effects</span></div>
+      <div class="box-body">
+        <input type="text" id="npcEffectName" placeholder="Effect name">
+        <div class="effect-quicklist">
+          <button type="button" class="effect-quick-btn" onclick="$('npcEffectName').value='Poison'">Poison</button>
+          <button type="button" class="effect-quick-btn" onclick="$('npcEffectName').value='Burning'">Burning</button>
+          <button type="button" class="effect-quick-btn" onclick="$('npcEffectName').value='Bleeding'">Bleeding</button>
+          <button type="button" class="effect-quick-btn" onclick="$('npcEffectName').value='Blessed'">Blessed</button>
+          <button type="button" class="effect-quick-btn" onclick="$('npcEffectName').value='Stunned'">Stunned</button>
+        </div>
+        <div class="row2" style="margin-top:8px;">
+          <input type="number" id="npcEffectAmount" placeholder="1" value="1" min="1">
+          <select id="npcEffectMode">
+            <option value="add">Add</option>
+            <option value="remove">Remove</option>
+            <option value="set">Set exact</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="applyNpcEffectChange()">Apply</button>
+        <div class="effect-chip-row" id="npcEffectChipRow"></div>
+      </div>
+    </div>
+
+    <div class="box">
+      <div class="box-head"><span>Items</span><button class="box-action" onclick="addItemToNpc()">+ Give</button></div>
+      <div class="box-body" id="npcItemsBody"></div>
     </div>
   </div>
 </div>
@@ -555,6 +609,33 @@ textarea { resize: vertical; min-height: 60px; }
   <button class="btn btn-primary" id="transferBtn" onclick="doTransfer()">Transfer Item</button>
 </div>
 
+<div class="panel" id="panel-npc-editor">
+  <div class="panel-handle"></div>
+  <div class="panel-head"><div class="panel-title" id="npcEditorTitle">Add Party NPC</div><button class="icon-btn" onclick="closePanel()">✕</button></div>
+
+  <label>Name</label>
+  <input type="text" id="npcName" placeholder="e.g. Old Finch">
+  <label>Description</label>
+  <textarea id="npcDesc" placeholder="Who they are, why they're with the party"></textarea>
+  <div class="row3">
+    <div><label>Level</label><input type="number" id="npcLevel" placeholder="1"></div>
+    <div><label>HP</label><input type="number" id="npcHp" placeholder="10"></div>
+    <div><label>Max HP</label><input type="number" id="npcMaxHp" placeholder="10"></div>
+  </div>
+  <div class="row3">
+    <div><label>STR</label><input type="number" id="npcStr" placeholder="10"></div>
+    <div><label>MND</label><input type="number" id="npcMnd" placeholder="10"></div>
+    <div><label>SOL</label><input type="number" id="npcSol" placeholder="10"></div>
+  </div>
+  <div class="row2">
+    <div><label>DEF</label><input type="number" id="npcDef" placeholder="10"></div>
+    <div><label>AC</label><input type="number" id="npcAc" placeholder="10"></div>
+  </div>
+
+  <button class="btn btn-primary" id="saveNpcBtn" onclick="saveNpc()">Save NPC</button>
+  <button class="btn btn-secondary" id="deleteNpcBtn" onclick="deleteNpc()" style="display:none;">Delete This NPC</button>
+</div>
+
 <div class="panel" id="panel-enemy">
   <div class="panel-handle"></div>
   <div class="panel-head"><div class="panel-title" id="enemyPanelTitle">Create Enemy / NPC</div><button class="icon-btn" onclick="closePanel()">✕</button></div>
@@ -642,12 +723,15 @@ var currentRepo = null; // the character whose dashboard is open
 
 // ── NAVIGATION ──
 function showScreen(name) {
-  ['home','dashboard','tools'].forEach(function(s) { $('screen-'+s).classList.toggle('active', s === name); });
+  ['home','dashboard','npc-dashboard','tools'].forEach(function(s) { $('screen-'+s).classList.toggle('active', s === name); });
   ['home','tools'].forEach(function(s) { $('navBtn-'+s).classList.toggle('active', s === name); });
-  $('backBtn').style.visibility = name === 'dashboard' ? 'visible' : 'hidden';
-  $('topbarTitle').textContent = name === 'dashboard' ? charDisplayName(currentRepo) : 'Secret Side';
+  $('backBtn').style.visibility = (name === 'dashboard' || name === 'npc-dashboard') ? 'visible' : 'hidden';
+  var title = 'Secret Side';
+  if (name === 'dashboard') title = charDisplayName(currentRepo);
+  if (name === 'npc-dashboard') { var n = getCurrentNpc(); title = n ? n.name : 'NPC'; }
+  $('topbarTitle').textContent = title;
 }
-function goHome() { currentRepo = null; showScreen('home'); renderCharGrid(); }
+function goHome() { currentRepo = null; currentNpcId = null; showScreen('home'); renderCharGrid(); renderNpcGrid(); }
 var presetLibraryLoadedOnce = false;
 function goTools() {
   showScreen('tools');
@@ -839,6 +923,7 @@ function renderItemsBox() {
           '<div class="item-row-actions">' +
             '<button class="mini-btn" onclick="editMailboxItem(\'' + reqRepo + '\',' + i + ')">Edit</button>' +
             '<button class="mini-btn" onclick="startTransferFromMailboxItem(\'' + reqRepo + '\',' + i + ')">Transfer</button>' +
+            '<button class="mini-btn" onclick="deleteMailboxItem(\'' + reqRepo + '\',' + i + ')">Delete</button>' +
           '</div></div>';
       }).join('');
     }
@@ -847,6 +932,14 @@ function renderItemsBox() {
     Object.keys(stats).forEach(function(k) { setKnownInfo(reqRepo, k, stats[k]); });
     renderKnownInfo();
   });
+}
+function deleteMailboxItem(repo, index) {
+  var item = (liveItemsCache[repo] || [])[index];
+  if (!item) return;
+  if (!confirm('Delete "' + item.name + '" from ' + charDisplayName(repo) + '? This can\'t be undone.')) return;
+  var cmd = { cmdId: 'c' + Date.now() + Math.floor(Math.random()*10000), type: 'removeItem', itemName: item.name };
+  sendToMailbox(repo, function(mailbox) { mailbox.commands.push(cmd); }, { disabled: false },
+    '"' + item.name + '" deleted.', 'Deleted item: ' + item.name);
 }
 function editMailboxItem(repo, index) {
   var item = (liveItemsCache[repo] || [])[index];
@@ -1291,6 +1384,21 @@ function sendItem() {
     closeToPanel('enemy');
     return;
   }
+  if (itemFormMode === 'npc') {
+    var npc = getCurrentNpc();
+    if (!npc) { setStatus('No NPC selected.', 'err'); return; }
+    if (editingNpcItemIndex !== null) { npc.items[editingNpcItemIndex] = item; editingNpcItemIndex = null; }
+    else npc.items.push(item);
+    itemFormMode = 'give';
+    closePanel();
+    setStatus('Saving…', 'busy');
+    saveCurrentNpcToGithub(function(err) {
+      if (err) { setStatus('Failed: ' + err.message, 'err'); return; }
+      setStatus('"' + item.name + '" saved.', 'ok');
+      renderNpcItemsList();
+    });
+    return;
+  }
   if (editingOriginalName) {
     var cmd = { cmdId: 'c' + Date.now() + Math.floor(Math.random()*10000), type: 'editItem', matchName: editingOriginalName, item: item };
     var originalName = editingOriginalName;
@@ -1298,10 +1406,12 @@ function sendItem() {
       '"' + originalName + '" will be updated to "' + item.name + '" next time their sheet loads.',
       'Updated item: ' + originalName + ' → ' + item.name);
     editingOriginalName = null; updateEditBanner();
+    closePanel();
     return;
   }
   sendToMailbox(currentRepo, function(mailbox) { mailbox.items.push(item); }, $('sendBtn'),
     '"' + item.name + '" sent. It\'ll appear next time their sheet loads.', 'Gave item: ' + item.name, item);
+  closePanel();
 }
 function sendStatChange() {
   var field = $('adjField').value;
@@ -1754,6 +1864,279 @@ function quickFillInitiative(id) {
   setStatus('Filled in below — add their initiative roll and tap "+ Add Combatant". Their actions will show up when it\'s their turn.', 'ok');
 }
 
+/* ══════════════ PARTY NPCs — DM-only, never touches a player's mailbox,
+   saved to this tool's own repo. Every change here applies instantly and
+   saves right away — there's no other device reading this, so there's no
+   reason to wait on a deploy. ══════════════ */
+var npcCache = [];
+var currentNpcId = null;
+var editingNpcId = null;
+var editingNpcItemIndex = null;
+function getCurrentNpc() { return npcCache.find(function(n){ return n.id === currentNpcId; }); }
+
+function fetchNpcsRaw(cb) {
+  var token = localStorage.getItem('secret_side_sender_token');
+  var headers = { 'Accept': 'application/vnd.github+json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  fetch('https://api.github.com/repos/' + GH_OWNER + '/' + DM_REPO + '/contents/npc-data.json', { headers: headers })
+    .then(function(r) {
+      if (r.status === 404) return { notFound: true };
+      if (!r.ok) return null;
+      return r.json();
+    })
+    .then(function(data) {
+      if (!data) { cb(null, null); return; }
+      if (data.notFound) { cb({ npcs: [] }, null); return; }
+      try { cb(JSON.parse(b64DecodeUnicode(data.content.replace(/\n/g, ''))), data.sha); }
+      catch (e) { cb({ npcs: [] }, data.sha); }
+    })
+    .catch(function(){ cb(null, null); });
+}
+function writeNpcsRaw(npcsObj, sha, cb) {
+  var token = localStorage.getItem('secret_side_sender_token');
+  if (!token) { cb(new Error('No GitHub token saved — tap ⚙ above.')); return; }
+  var headers = { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' };
+  var body = { message: 'Update party NPCs', content: b64EncodeUnicode(JSON.stringify(npcsObj, null, 2)) };
+  if (sha) body.sha = sha;
+  fetch('https://api.github.com/repos/' + GH_OWNER + '/' + DM_REPO + '/contents/npc-data.json', {
+    method: 'PUT', headers: headers, body: JSON.stringify(body)
+  })
+    .then(function(r) {
+      if (!r.ok) return r.json().then(function(e){ throw new Error(e.message || ('Write failed: status ' + r.status)); });
+      cb(null);
+    })
+    .catch(function(err){ cb(err); });
+}
+// Re-fetches fresh (so we don't clobber a change made from another device),
+// merges in whatever the in-memory NPC currently looks like, writes it back.
+function saveCurrentNpcToGithub(cb) {
+  var npc = getCurrentNpc();
+  if (!npc) { cb(new Error('No NPC selected.')); return; }
+  fetchNpcsRaw(function(data, sha) {
+    if (!data) { cb(new Error('Could not reach GitHub.')); return; }
+    var npcs = data.npcs || [];
+    var idx = npcs.findIndex(function(n){ return n.id === npc.id; });
+    if (idx !== -1) npcs[idx] = npc; else npcs.push(npc);
+    writeNpcsRaw({ npcs: npcs }, sha, function(err) {
+      if (!err) npcCache = npcs;
+      cb(err);
+    });
+  });
+}
+
+function renderNpcGrid() {
+  var wrap = $('npcGrid');
+  wrap.innerHTML = '<div class="box-empty">Loading…</div>';
+  fetchNpcsRaw(function(data) {
+    if (!data) { wrap.innerHTML = '<div class="box-empty">Couldn\'t load NPCs (check your token).</div>'; return; }
+    npcCache = data.npcs || [];
+    if (!npcCache.length) { wrap.innerHTML = '<div class="box-empty">No party NPCs yet.</div>'; return; }
+    wrap.innerHTML = npcCache.map(function(n) {
+      var effCount = n.effects ? Object.keys(n.effects).filter(function(k){ return n.effects[k] > 0; }).length : 0;
+      var itemCount = (n.items || []).length;
+      var sub = effCount ? (effCount + ' active effect' + (effCount > 1 ? 's' : '')) : (itemCount + ' item' + (itemCount === 1 ? '' : 's'));
+      return '<div class="char-card" style="--card-color:#8a8894" onclick="openNpcDashboard(\'' + n.id + '\')">' +
+        '<div><div class="char-card-name">' + escHtml(n.name) + '</div><div class="char-card-sub">' + escHtml(sub) + '</div></div>' +
+      '</div>';
+    }).join('');
+  });
+}
+
+function openNpcDashboard(id) {
+  currentNpcId = id;
+  showScreen('npc-dashboard');
+  renderNpcDashboard();
+}
+function renderNpcDashboard() {
+  var npc = getCurrentNpc();
+  if (!npc) return;
+  $('npcDashName').textContent = npc.name;
+  var fields = [['level','Level'],['str','STR'],['mnd','MND'],['sol','SOL'],['def','DEF'],['ac','AC']];
+  var hpLine = '';
+  if (npc.hp !== undefined) {
+    hpLine = '<div class="hp-quick-row">' +
+      '<button class="hp-quick-btn dmg" onclick="quickAdjustNpcHp(-1)">−</button>' +
+      '<input type="number" id="npcHpQuickAmt" value="1" min="1">' +
+      '<button class="hp-quick-btn heal" onclick="quickAdjustNpcHp(1)">+</button>' +
+      '<span class="hp-quick-val">' + npc.hp + (npc.maxHp !== undefined ? ' / ' + npc.maxHp : '') + '</span>' +
+    '</div>';
+  }
+  var statsGrid = '<div class="known-grid">' + fields.map(function(f) {
+    var val = npc[f[0]];
+    if (val === undefined || val === '') return '';
+    return '<div class="known-stat"><span class="known-stat-label">' + f[1] + '</span><span class="known-stat-val">' + escHtml(String(val)) + '</span></div>';
+  }).join('') + '</div>';
+  $('npcInfoBody').innerHTML = (npc.desc ? '<div class="preset-card-desc" style="margin-bottom:10px;">' + escHtml(npc.desc) + '</div>' : '') + hpLine + statsGrid;
+  renderNpcEffectChips();
+  renderNpcItemsList();
+}
+function quickAdjustNpcHp(sign) {
+  var npc = getCurrentNpc();
+  if (!npc || npc.hp === undefined) return;
+  var amt = parseInt($('npcHpQuickAmt').value) || 1;
+  var newVal = npc.hp + (sign * amt);
+  if (newVal < 0) newVal = 0;
+  if (npc.maxHp !== undefined && newVal > npc.maxHp) newVal = npc.maxHp;
+  npc.hp = newVal;
+  renderNpcDashboard();
+  saveCurrentNpcToGithub(function(err) { if (err) setStatus('Failed to save: ' + err.message, 'err'); });
+}
+
+function openNpcEditor(id) {
+  var npc = id ? (npcCache.find(function(n){ return n.id === id; }) || getCurrentNpc()) : null;
+  if (npc) {
+    $('npcEditorTitle').textContent = 'Edit Party NPC';
+    $('npcName').value = npc.name || '';
+    $('npcDesc').value = npc.desc || '';
+    $('npcLevel').value = npc.level !== undefined ? npc.level : '';
+    $('npcHp').value = npc.hp !== undefined ? npc.hp : '';
+    $('npcMaxHp').value = npc.maxHp !== undefined ? npc.maxHp : '';
+    $('npcStr').value = npc.str !== undefined ? npc.str : '';
+    $('npcMnd').value = npc.mnd !== undefined ? npc.mnd : '';
+    $('npcSol').value = npc.sol !== undefined ? npc.sol : '';
+    $('npcDef').value = npc.def !== undefined ? npc.def : '';
+    $('npcAc').value = npc.ac !== undefined ? npc.ac : '';
+    $('deleteNpcBtn').style.display = 'block';
+    editingNpcId = npc.id;
+  } else {
+    $('npcEditorTitle').textContent = 'Add Party NPC';
+    ['npcName','npcDesc','npcLevel','npcHp','npcMaxHp','npcStr','npcMnd','npcSol','npcDef','npcAc'].forEach(function(f){ $(f).value = ''; });
+    $('deleteNpcBtn').style.display = 'none';
+    editingNpcId = null;
+  }
+  openPanel('npc-editor');
+}
+function saveNpc() {
+  var name = $('npcName').value.trim();
+  if (!name) { setStatus('Name the NPC first.', 'err'); return; }
+  $('saveNpcBtn').disabled = true;
+  setStatus('Saving…', 'busy');
+  fetchNpcsRaw(function(data, sha) {
+    if (!data) { setStatus('Could not reach GitHub — check your token.', 'err'); $('saveNpcBtn').disabled = false; return; }
+    var npcs = data.npcs || [];
+    var npcData = {
+      id: editingNpcId || ('npc_' + Date.now() + Math.floor(Math.random()*10000)),
+      name: name, desc: $('npcDesc').value,
+      level: $('npcLevel').value, hp: parseInt($('npcHp').value) || 0, maxHp: parseInt($('npcMaxHp').value) || parseInt($('npcHp').value) || 0,
+      str: $('npcStr').value, mnd: $('npcMnd').value, sol: $('npcSol').value, def: $('npcDef').value, ac: $('npcAc').value,
+      items: [], effects: {}
+    };
+    var idx = editingNpcId ? npcs.findIndex(function(n){ return n.id === editingNpcId; }) : -1;
+    if (idx !== -1) { npcData.items = npcs[idx].items || []; npcData.effects = npcs[idx].effects || {}; npcs[idx] = npcData; }
+    else npcs.push(npcData);
+    writeNpcsRaw({ npcs: npcs }, sha, function(err) {
+      $('saveNpcBtn').disabled = false;
+      if (err) { setStatus('Failed: ' + err.message, 'err'); return; }
+      npcCache = npcs;
+      setStatus('"' + name + '" saved.', 'ok');
+      closePanel();
+      renderNpcGrid();
+      if (currentNpcId === npcData.id) renderNpcDashboard();
+    });
+  });
+}
+function deleteNpc() {
+  if (!editingNpcId) return;
+  if (!confirm('Delete this NPC entirely? This can\'t be undone.')) return;
+  setStatus('Deleting…', 'busy');
+  fetchNpcsRaw(function(data, sha) {
+    if (!data) { setStatus('Could not reach GitHub.', 'err'); return; }
+    var npcs = (data.npcs || []).filter(function(n){ return n.id !== editingNpcId; });
+    writeNpcsRaw({ npcs: npcs }, sha, function(err) {
+      if (err) { setStatus('Failed: ' + err.message, 'err'); return; }
+      npcCache = npcs;
+      setStatus('NPC deleted.', 'ok');
+      closePanel();
+      goHome();
+    });
+  });
+}
+
+function renderNpcItemsList() {
+  var npc = getCurrentNpc();
+  var wrap = $('npcItemsBody');
+  if (!npc || !npc.items || !npc.items.length) { wrap.innerHTML = '<div class="box-empty">Nothing yet.</div>'; return; }
+  wrap.innerHTML = npc.items.map(function(it, i) {
+    return '<div class="item-row"><div class="item-row-main"><div class="item-row-name">' + escHtml(it.name) + '</div><div class="item-row-type">' + escHtml(it.type || '') + '</div></div>' +
+      '<div class="item-row-actions">' +
+        '<button class="mini-btn" onclick="editNpcItem(' + i + ')">Edit</button>' +
+        '<button class="mini-btn" onclick="deleteNpcItem(' + i + ')">Delete</button>' +
+      '</div></div>';
+  }).join('');
+}
+function addItemToNpc() {
+  editingOriginalName = null;
+  editingNpcItemIndex = null;
+  itemFormMode = 'npc';
+  closeToPanel('give');
+}
+function editNpcItem(i) {
+  var npc = getCurrentNpc();
+  if (!npc) return;
+  loadItemIntoForm(npc.items[i]);
+  editingOriginalName = null;
+  editingNpcItemIndex = i;
+  itemFormMode = 'npc';
+  openPanel('give');
+}
+function deleteNpcItem(i) {
+  var npc = getCurrentNpc();
+  if (!npc) return;
+  if (!confirm('Delete "' + npc.items[i].name + '"?')) return;
+  npc.items.splice(i, 1);
+  renderNpcItemsList();
+  saveCurrentNpcToGithub(function(err) {
+    if (err) { setStatus('Failed: ' + err.message, 'err'); return; }
+    setStatus('Item deleted.', 'ok');
+  });
+}
+
+function renderNpcEffectChips() {
+  var npc = getCurrentNpc();
+  var wrap = $('npcEffectChipRow');
+  if (!npc) { wrap.innerHTML = ''; return; }
+  var effects = npc.effects || {};
+  var names = Object.keys(effects).filter(function(n){ return effects[n] > 0; });
+  if (!names.length) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = names.map(function(name) {
+    var safe = name.replace(/'/g, "\\'");
+    return '<div class="effect-chip"><span class="effect-chip-name">' + escHtml(name) + '</span>' +
+      '<span class="effect-chip-count">&times;' + effects[name] + '</span>' +
+      '<button class="effect-chip-btn" onclick="adjustNpcEffect(\'' + safe + '\',-1)">&minus;</button>' +
+      '<button class="effect-chip-btn" onclick="adjustNpcEffect(\'' + safe + '\',1)">+</button>' +
+      '<button class="effect-chip-btn" onclick="removeNpcEffect(\'' + safe + '\')">&times;</button></div>';
+  }).join('');
+}
+function adjustNpcEffect(name, delta) {
+  var npc = getCurrentNpc(); if (!npc) return;
+  if (!npc.effects) npc.effects = {};
+  npc.effects[name] = (npc.effects[name] || 0) + delta;
+  if (npc.effects[name] <= 0) delete npc.effects[name];
+  renderNpcEffectChips();
+  saveCurrentNpcToGithub(function(err) { if (err) setStatus('Failed to save: ' + err.message, 'err'); });
+}
+function removeNpcEffect(name) {
+  var npc = getCurrentNpc(); if (!npc) return;
+  if (npc.effects) delete npc.effects[name];
+  renderNpcEffectChips();
+  saveCurrentNpcToGithub(function(err) { if (err) setStatus('Failed to save: ' + err.message, 'err'); });
+}
+function applyNpcEffectChange() {
+  var npc = getCurrentNpc(); if (!npc) return;
+  var name = $('npcEffectName').value.trim();
+  if (!name) return;
+  var amt = parseInt($('npcEffectAmount').value) || 1;
+  var mode = $('npcEffectMode').value;
+  if (!npc.effects) npc.effects = {};
+  if (mode === 'add') npc.effects[name] = (npc.effects[name] || 0) + amt;
+  else if (mode === 'remove') npc.effects[name] = (npc.effects[name] || 0) - amt;
+  else npc.effects[name] = amt;
+  if (npc.effects[name] <= 0) delete npc.effects[name];
+  $('npcEffectName').value = '';
+  renderNpcEffectChips();
+  saveCurrentNpcToGithub(function(err) { if (err) setStatus('Failed to save: ' + err.message, 'err'); });
+}
+
 /* ══════════════ TOOLS: random target, dice, initiative ══════════════ */
 function loadPartyList() {
   var saved; try { saved = JSON.parse(localStorage.getItem('secret_side_party_list')); } catch(e) {}
@@ -1942,6 +2325,7 @@ onAdjFieldChange();
 loadPartyList();
 loadInit();
 renderCharGrid();
+renderNpcGrid();
 </script>
 </body>
 </html>
