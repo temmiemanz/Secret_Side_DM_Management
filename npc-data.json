@@ -1,3 +1,19 @@
 {
-  "npcs": []
+  "npcs": [
+    {
+      "id": "npc_17911500856063851",
+      "name": "Watson - Cobbled",
+      "desc": "Twigs for limbs, rock torso, metal dust head. Animated face. happy all the time.",
+      "level": "1",
+      "hp": 2,
+      "maxHp": 2,
+      "str": "3",
+      "mnd": "10",
+      "sol": "16",
+      "def": "1",
+      "ac": "6",
+      "items": [],
+      "effects": {}
+    }
+  ]
 }
