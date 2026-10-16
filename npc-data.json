@@ -27,7 +27,53 @@
       "sol": "15",
       "def": "10",
       "ac": "13",
-      "items": [],
+      "items": [
+        {
+          "mailId": "m17921541544539596",
+          "name": "Assault Rifle",
+          "type": "Weapon",
+          "rarity": "Common",
+          "value": "",
+          "weight": "8",
+          "qty": 1,
+          "stackable": false,
+          "desc": "Never misses",
+          "notes": "",
+          "equippable": true,
+          "usable": false,
+          "consumable": false,
+          "uses": "",
+          "props": "Ammunition, Automatic, Two-Handed",
+          "weaponWt": "Ranged",
+          "twoHanded": true,
+          "ac": "",
+          "armorType": "Light",
+          "strReq": "",
+          "stealthDisadv": false,
+          "ammoDamage": "",
+          "ammoDmgType": "",
+          "effect": "",
+          "fx": {
+            "str": "",
+            "mnd": "",
+            "sol": "",
+            "def": ""
+          },
+          "conditions": [],
+          "customFields": [],
+          "actions": [
+            {
+              "name": "Assault Rifle",
+              "damage": "1d10",
+              "dmgType": "Piercing",
+              "range": "100/300 ft",
+              "damage2": "",
+              "dmgType2": "",
+              "notes": ""
+            }
+          ]
+        }
+      ],
       "effects": {}
     }
   ]
