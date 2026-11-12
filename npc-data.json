@@ -60,6 +60,21 @@
         }
       ],
       "effects": {}
+    },
+    {
+      "id": "npc_17944961768921092",
+      "name": "Captain Clark - Cobbled",
+      "desc": "The still life Captain Clark",
+      "level": "0",
+      "hp": 0,
+      "maxHp": 0,
+      "str": "30",
+      "mnd": "0",
+      "sol": "0",
+      "def": "0",
+      "ac": "10",
+      "items": [],
+      "effects": {}
     }
   ]
 }
